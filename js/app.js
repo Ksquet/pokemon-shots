@@ -122,6 +122,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Initialiser d'abord avec les données statiques pour une utilisation immédiate
         boosterOpener = new BoosterOpener(window.pokemon151Data);
+
+        // S'assurer que boosterOpener est accessible depuis l'extérieur
+        window.boosterOpener = boosterOpener;
         
         // Charger les données complètes en arrière-plan
         loadCardDataInBackground();
@@ -192,6 +195,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 loadingIndicator.style.display = 'none';
             }
         }
+
+        // Mettre à jour l'ouvreur de boosters avec les données complètes
+        boosterOpener = new BoosterOpener(cardsData);
+        window.boosterOpener = boosterOpener; // S'assurer qu'il est accessible globalement
     }
 
     // Gestionnaire d'événement pour l'ouverture d'un booster
@@ -338,8 +345,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             cardsContainer.appendChild(cardElement);
             
             // Ajouter l'événement de clic pour révéler la carte
-            cardElement.addEventListener('click', () => {
-                revealCard(cardElement);
+            cardElement.addEventListener('click', (e) => {
+                console.log("Clic sur une carte détecté!");
+                
+                // Si la carte n'est pas encore révélée, on la révèle
+                if (!cardElement.classList.contains('revealed')) {
+                    console.log("La carte n'est pas révélée, on la révèle");
+                    revealCard(cardElement);
+                    e.stopPropagation();
+                } else {
+                    console.log("La carte est déjà révélée, clic pour zoom possible");
+                }
             });
         });
         
@@ -352,6 +368,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Mettre à jour les statistiques
         updateStats();
+
+        // Réinitialiser les événements de zoom des cartes
+        if (typeof window.setupCardZoomEvents === 'function') {
+            window.setupCardZoomEvents();
+        }
     }
 
     /**
@@ -376,6 +397,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 revealCard(card);
             }, index * 200);
         });
+        
+        // Réinitialiser les événements de zoom des cartes après révélation
+        setTimeout(() => {
+            if (typeof window.setupCardZoomEvents === 'function') {
+                window.setupCardZoomEvents();
+            }
+        }, cards.length * 200 + 100);
     }
 
     /**
@@ -585,4 +613,154 @@ document.addEventListener('DOMContentLoaded', async () => {
             );
         }
     }
+
+    // Fonctionnalité pour agrandir les cartes en cliquant dessus
+    // Éléments DOM
+    const cardOverlay = document.getElementById('card-overlay');
+    const zoomedCardImage = document.getElementById('zoomed-card-image');
+    const zoomedCardName = document.getElementById('zoomed-card-name');
+    const zoomedCardType = document.getElementById('zoomed-card-type');
+    const zoomedCardRarity = document.getElementById('zoomed-card-rarity');
+    const zoomedCardNumber = document.getElementById('zoomed-card-number');
+
+    // Fonction pour convertir les raretés techniques en texte lisible
+    function formatRarity(rarity) {
+        const rarityMap = {
+            'common': 'Commune',
+            'uncommon': 'Peu commune',
+            'rare': 'Rare',
+            'ultraRare': 'Ultra rare',
+            'secretRare': 'Secrète rare',
+            'doubleRare': 'Double rare',
+            'trainer': 'Dresseur',
+            'energy': 'Énergie'
+        };
+        return rarityMap[rarity] || rarity;
+    }
+
+    // Fonction pour afficher l'overlay avec la carte agrandie
+    function showCardOverlay(card, imageUrl) {
+        console.log("Tentative d'affichage de l'overlay pour la carte:", card.name);
+        
+        const cardOverlay = document.getElementById('card-overlay');
+        
+        if (!cardOverlay) {
+            console.error("Element #card-overlay introuvable!");
+            return;
+        }
+        
+        console.log("Éléments d'overlay trouvés, mise à jour des informations");
+        
+        // Vérifier si les éléments existent
+        const zoomedCardImage = document.getElementById('zoomed-card-image');
+        const zoomedCardName = document.getElementById('zoomed-card-name');
+        const zoomedCardType = document.getElementById('zoomed-card-type');
+        const zoomedCardRarity = document.getElementById('zoomed-card-rarity');
+        const zoomedCardNumber = document.getElementById('zoomed-card-number');
+        
+        console.log("Images trouvées?", !!zoomedCardImage);
+        console.log("Nom trouvé?", !!zoomedCardName);
+        
+        // Mise à jour des informations de la carte
+        if (zoomedCardImage) zoomedCardImage.src = imageUrl;
+        if (zoomedCardImage) zoomedCardImage.alt = card.name;
+        if (zoomedCardName) zoomedCardName.textContent = card.name;
+        if (zoomedCardType) zoomedCardType.textContent = card.type;
+        if (zoomedCardRarity) zoomedCardRarity.textContent = formatRarity(card.rarity);
+        if (zoomedCardNumber) zoomedCardNumber.textContent = card.number;
+        
+        // Afficher l'overlay
+        console.log("Classes de l'overlay avant:", cardOverlay.className);
+        cardOverlay.classList.remove('hidden');
+        console.log("Classes de l'overlay après suppression de 'hidden':", cardOverlay.className);
+        
+        setTimeout(() => {
+            console.log("Ajout de la classe 'show' à l'overlay");
+            cardOverlay.classList.add('show');
+            if (zoomedCardImage) zoomedCardImage.classList.add('zooming-in');
+            console.log("Classes finales de l'overlay:", cardOverlay.className);
+        }, 10);
+    }
+
+    // Fonction pour fermer l'overlay
+    function hideCardOverlay() {
+        if (!cardOverlay) return;
+        
+        cardOverlay.classList.remove('show');
+        setTimeout(() => {
+            cardOverlay.classList.add('hidden');
+            zoomedCardImage.classList.remove('zooming-in');
+        }, 300);
+    }
+
+    // Gestionnaire d'événement pour le clic sur une carte
+    function setupCardZoomEvents() {
+        const cardsContainer = document.querySelector('.cards-container');
+        
+        if (cardsContainer) {
+            // Utiliser la délégation d'événements pour gérer les cartes dynamiques
+            cardsContainer.addEventListener('click', function(event) {
+                const cardElement = event.target.closest('.card');
+                
+                // Vérifier que c'est une carte révélée
+                if (cardElement && cardElement.classList.contains('revealed')) {
+                    // Obtenir l'URL de l'image directement
+                    const imageUrl = cardElement.querySelector('img').src;
+                    console.log("Zoom sur l'image:", imageUrl);
+                    
+                    // Afficher juste l'image agrandie
+                    showSimpleCardZoom(imageUrl);
+                }
+            });
+        }
+        
+        // Fermer l'overlay en cliquant dessus
+        const cardOverlay = document.getElementById('card-overlay');
+        if (cardOverlay) {
+            cardOverlay.addEventListener('click', function(event) {
+                hideCardOverlay();
+            });
+        }
+    }
+    
+    // Fonction simplifiée pour afficher l'image zoomée
+    function showSimpleCardZoom(imageUrl) {
+        const cardOverlay = document.getElementById('card-overlay');
+        const zoomedCardImage = document.getElementById('zoomed-card-image');
+        
+        if (!cardOverlay || !zoomedCardImage) {
+            console.error("Éléments d'overlay introuvables!");
+            return;
+        }
+        
+        // Mettre à jour uniquement l'image
+        zoomedCardImage.src = imageUrl;
+        
+        // Afficher l'overlay
+        cardOverlay.classList.remove('hidden');
+        setTimeout(() => {
+            cardOverlay.classList.add('show');
+            zoomedCardImage.classList.add('zooming-in');
+        }, 10);
+    }
+    
+    // Fonction pour masquer l'overlay
+    function hideCardOverlay() {
+        const cardOverlay = document.getElementById('card-overlay');
+        if (!cardOverlay) return;
+        
+        cardOverlay.classList.remove('show');
+        setTimeout(() => {
+            cardOverlay.classList.add('hidden');
+        }, 300);
+    }
+
+    // Configurer les événements de zoom une fois que le DOM est chargé
+    setupCardZoomEvents();
+
+    // Exposer la fonction de configuration pour qu'elle puisse être appelée après 
+    // l'ajout dynamique de nouvelles cartes
+    window.setupCardZoomEvents = setupCardZoomEvents;
+
+
 });
