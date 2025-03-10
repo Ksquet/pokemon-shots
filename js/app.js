@@ -348,10 +348,152 @@ document.addEventListener('DOMContentLoaded', async () => {
      */
     function updateStats() {
         const stats = boosterOpener.getStats();
-        openedCount.textContent = stats.opened;
-        rareCount.textContent = stats.rare;
-        ultraRareCount.textContent = stats.ultraRare;
+        
+        // Mise à jour des compteurs basiques (compatibilité avec l'interface d'origine)
+        document.getElementById('opened-count').textContent = stats.opened;
+        document.getElementById('rare-count').textContent = stats.rare;
+        
+        // Pour les cartes ultra-rares, on additionne toutes les raretés supérieures
+        const totalUltraRareCount = (stats.ultraRare || 0) + 
+                                    (stats.illustrationRare || 0) + 
+                                    (stats.specialIllRare || 0) + 
+                                    (stats.hyperRare || 0);
+        document.getElementById('ultra-rare-count').textContent = totalUltraRareCount;
+        
+        // Mise à jour des compteurs détaillés (si les éléments existent)
+        updateElementIfExists('double-rare-count', stats.doubleRare);
+        updateElementIfExists('standard-ultra-count', stats.ultraRare);
+        updateElementIfExists('ill-rare-count', stats.illustrationRare);
+        updateElementIfExists('special-ill-count', stats.specialIllRare);
+        updateElementIfExists('hyper-rare-count', stats.hyperRare);
+        updateElementIfExists('foil-energy-count', stats.foilEnergy);
+        
+        // Calculer et afficher les taux de pull réels vs théoriques
+        if (stats.opened >= 10) {
+            updatePullRates();
+        }
     }
+
+    /**
+     * Met à jour l'élément HTML s'il existe
+     * @param {string} id - ID de l'élément HTML
+     * @param {number} value - Valeur à afficher
+     */
+    function updateElementIfExists(id, value) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value || 0;
+        }
+    }
+
+    /**
+     * Met à jour l'affichage des taux de pull réels vs théoriques
+     */
+    function updatePullRates() {
+        const pullRates = boosterOpener.checkPullRates();
+        
+        // Mettre à jour le tableau de comparaison si l'élément existe
+        const tableBody = document.getElementById('pull-rates-table-body');
+        if (tableBody) {
+            tableBody.innerHTML = ''; // Effacer le contenu actuel
+            
+            for (const [key, data] of Object.entries(pullRates.comparison)) {
+                // Formater le nom de la carte (foilEnergy -> Foil Energy)
+                const formattedName = key
+                    .replace(/([A-Z])/g, ' $1')
+                    .replace(/^./, str => str.toUpperCase());
+                
+                // Créer une classe pour la différence (positif, négatif ou neutre)
+                const diffClass = Math.abs(data.difference) < 10 
+                    ? 'neutral' 
+                    : data.difference > 0 ? 'positive' : 'negative';
+                
+                // Créer la ligne du tableau
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formattedName}</td>
+                    <td>${(data.expected * 100).toFixed(2)}%</td>
+                    <td>${data.expectedText}</td>
+                    <td>${(data.actual * 100).toFixed(2)}%</td>
+                    <td>${data.actualText}</td>
+                    <td class="${diffClass}">${data.difference.toFixed(1)}%</td>
+                `;
+                
+                tableBody.appendChild(row);
+            }
+        }
+        
+        // Mettre à jour le nombre total de boosters ouverts
+        const totalElement = document.getElementById('total-boosters-opened');
+        if (totalElement) {
+            totalElement.textContent = pullRates.totalOpened;
+        }
+    }
+
+    /**
+     * Ajoute un élément statistique au panneau
+     * Cette fonction peut être appelée lors de l'initialisation pour créer 
+     * dynamiquement les éléments statistiques supplémentaires
+     */
+    function addStatElement(parentId, id, label) {
+        const parent = document.getElementById(parentId);
+        if (parent) {
+            const paragraph = document.createElement('p');
+            paragraph.innerHTML = `${label}: <span id="${id}">0</span>`;
+            parent.appendChild(paragraph);
+        }
+    }
+
+    /**
+     * Crée le tableau de comparaison des taux de pull
+     */
+    function createPullRatesTable(parentId) {
+        const parent = document.getElementById(parentId);
+        if (!parent) return;
+        
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'pull-rates-container';
+        
+        tableContainer.innerHTML = `
+            <h4>Comparaison des taux de pull</h4>
+            <p>Boosters ouverts: <span id="total-boosters-opened">0</span></p>
+            <table class="pull-rates-table">
+                <thead>
+                    <tr>
+                        <th>Type de carte</th>
+                        <th>Taux théorique</th>
+                        <th>Théorique (1 sur X)</th>
+                        <th>Taux réel</th>
+                        <th>Réel (1 sur X)</th>
+                        <th>Différence</th>
+                    </tr>
+                </thead>
+                <tbody id="pull-rates-table-body">
+                    <!-- Contenu généré dynamiquement -->
+                </tbody>
+            </table>
+        `;
+        
+        parent.appendChild(tableContainer);
+    }
+
+    // Ces fonctions peuvent être appelées lors de l'initialisation pour 
+    // ajouter dynamiquement les éléments statistiques supplémentaires
+    function initializeStatsPanel() {
+        // Ajouter les compteurs détaillés
+        addStatElement('detailed-stats', 'double-rare-count', 'Double Rares');
+        addStatElement('detailed-stats', 'standard-ultra-count', 'Ultra Rares standard');
+        addStatElement('detailed-stats', 'ill-rare-count', 'Illustration Rares');
+        addStatElement('detailed-stats', 'special-ill-count', 'Special Illustration');
+        addStatElement('detailed-stats', 'hyper-rare-count', 'Hyper Rares');
+        addStatElement('detailed-stats', 'foil-energy-count', 'Énergies brillantes');
+        
+        // Créer le tableau de comparaison
+        createPullRatesTable('pull-rates-panel');
+    }
+
+    // Appeler cette fonction après que le DOM est chargé
+    // document.addEventListener('DOMContentLoaded', initializeStatsPanel);
 
     // Génération du dos de carte dynamiquement
     generateCardBack();
