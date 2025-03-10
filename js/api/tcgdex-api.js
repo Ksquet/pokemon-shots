@@ -29,7 +29,7 @@ async function loadPokemon151Data() {
         // Tableau de correspondance des raretés de l'API vers celles de l'application
         const rarityMap = {
             'Commune': 'common',
-            'Peu commune': 'uncommon',
+            'Peu Commune': 'uncommon',
             'Rare': 'rare',
             'Rare Holo': 'rare',
             'Ultra Rare': 'ultraRare',
@@ -37,7 +37,12 @@ async function loadPokemon151Data() {
             'Rare Holo VMAX': 'ultraRare',
             'Rare Holo VSTAR': 'ultraRare',
             'Arc-en-ciel Rare': 'secretRare',
-            'Rare Secrète': 'secretRare'
+            'Rare Secrète': 'secretRare',
+            'Hyper rare': 'secretRare',    // Ajoutez cette ligne
+            'Secret Rare': 'secretRare',   // Ajoutez cette ligne au cas où
+            'Illustration rare': 'ultraRare', // Ajoutez cette ligne
+            'Illustration spéciale rare': 'ultraRare', // Ajoutez cette ligne
+            'Double rare': 'doubleRare'
         };
         
         // Récupérer les détails de chaque carte
@@ -85,6 +90,9 @@ async function loadPokemon151Data() {
                     
                     // Construire l'URL de l'image
                     const imageUrl = `https://assets.tcgdex.net/fr/${fullSetPath}/${cardData.localId}/high.jpg`;
+
+                    // Ajouter après avoir créé la carte convertie mais avant de l'ajouter au tableau
+                    console.log(`Carte chargée: ${cardData.name} (${cardData.localId}) - Rareté API: ${cardData.rarity} -> Rareté convertie: ${rarity}`);
                     
                     // Ajouter la carte formatée au tableau
                     convertedCards.push({
