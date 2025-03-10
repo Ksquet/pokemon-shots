@@ -1,6 +1,6 @@
 /**
  * Base de données des cartes du set Pokémon 151 en français
- * Note: Ceci est un échantillon représentatif et non l'ensemble complet des cartes
+ * Version modifiée pour utiliser l'API TCGdex
  */
 window.pokemon151Data = [
     // Cartes communes
@@ -10,7 +10,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "common",
         number: "1/165",
-        imageUrl: null // À remplacer par le chemin réel de l'image
+        setId: "sv3pt5",  // Identifiant du set (pour TCGdex)
+        localId: "1"      // Numéro de la carte dans le set
     },
     {
         id: "151-004",
@@ -18,7 +19,8 @@ window.pokemon151Data = [
         type: "Feu",
         rarity: "common",
         number: "4/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "4"
     },
     {
         id: "151-007",
@@ -26,7 +28,8 @@ window.pokemon151Data = [
         type: "Eau",
         rarity: "common",
         number: "7/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "7"
     },
     {
         id: "151-010",
@@ -34,7 +37,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "common",
         number: "10/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "10"
     },
     {
         id: "151-013",
@@ -42,7 +46,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "common",
         number: "13/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "13"
     },
     {
         id: "151-016",
@@ -50,7 +55,8 @@ window.pokemon151Data = [
         type: "Incolore",
         rarity: "common",
         number: "16/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "16"
     },
     {
         id: "151-019",
@@ -58,7 +64,8 @@ window.pokemon151Data = [
         type: "Incolore",
         rarity: "common",
         number: "19/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "19"
     },
     {
         id: "151-021",
@@ -66,7 +73,8 @@ window.pokemon151Data = [
         type: "Incolore",
         rarity: "common",
         number: "21/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "21"
     },
     {
         id: "151-023",
@@ -74,7 +82,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "common",
         number: "23/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "23"
     },
     {
         id: "151-027",
@@ -82,7 +91,8 @@ window.pokemon151Data = [
         type: "Combat",
         rarity: "common",
         number: "27/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "27"
     },
     {
         id: "151-029",
@@ -90,7 +100,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "common",
         number: "29/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "29"
     },
     {
         id: "151-032",
@@ -98,7 +109,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "common",
         number: "32/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "32"
     },
     
     // Cartes peu communes (uncommon)
@@ -108,7 +120,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "uncommon",
         number: "2/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "2"
     },
     {
         id: "151-005",
@@ -116,7 +129,8 @@ window.pokemon151Data = [
         type: "Feu",
         rarity: "uncommon",
         number: "5/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "5"
     },
     {
         id: "151-008",
@@ -124,7 +138,8 @@ window.pokemon151Data = [
         type: "Eau",
         rarity: "uncommon",
         number: "8/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "8"
     },
     {
         id: "151-011",
@@ -132,7 +147,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "uncommon",
         number: "11/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "11"
     },
     {
         id: "151-014",
@@ -140,7 +156,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "uncommon",
         number: "14/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "14"
     },
     {
         id: "151-017",
@@ -148,7 +165,8 @@ window.pokemon151Data = [
         type: "Incolore",
         rarity: "uncommon",
         number: "17/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "17"
     },
     {
         id: "151-030",
@@ -156,7 +174,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "uncommon",
         number: "30/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "30"
     },
     {
         id: "151-033",
@@ -164,7 +183,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "uncommon",
         number: "33/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "33"
     },
     
     // Cartes rares
@@ -174,7 +194,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "rare",
         number: "3/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "3"
     },
     {
         id: "151-006",
@@ -182,7 +203,8 @@ window.pokemon151Data = [
         type: "Feu",
         rarity: "rare",
         number: "6/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "6"
     },
     {
         id: "151-009",
@@ -190,7 +212,8 @@ window.pokemon151Data = [
         type: "Eau",
         rarity: "rare",
         number: "9/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "9"
     },
     {
         id: "151-012",
@@ -198,7 +221,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "rare",
         number: "12/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "12"
     },
     {
         id: "151-015",
@@ -206,7 +230,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "rare",
         number: "15/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "15"
     },
     {
         id: "151-018",
@@ -214,7 +239,8 @@ window.pokemon151Data = [
         type: "Incolore",
         rarity: "rare",
         number: "18/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "18"
     },
     {
         id: "151-020",
@@ -222,7 +248,8 @@ window.pokemon151Data = [
         type: "Incolore",
         rarity: "rare",
         number: "20/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "20"
     },
     {
         id: "151-022",
@@ -230,7 +257,8 @@ window.pokemon151Data = [
         type: "Incolore",
         rarity: "rare",
         number: "22/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "22"
     },
     {
         id: "151-024",
@@ -238,7 +266,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "rare",
         number: "24/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "24"
     },
     {
         id: "151-025",
@@ -246,7 +275,8 @@ window.pokemon151Data = [
         type: "Électrique",
         rarity: "rare",
         number: "25/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "25"
     },
     
     // Cartes ultra-rares
@@ -256,7 +286,8 @@ window.pokemon151Data = [
         type: "Feu",
         rarity: "ultraRare",
         number: "6/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "151" // Cartes bonus, numéros arbitraires
     },
     {
         id: "151-025-alt",
@@ -264,7 +295,8 @@ window.pokemon151Data = [
         type: "Électrique",
         rarity: "ultraRare",
         number: "25/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "152"
     },
     {
         id: "151-031",
@@ -272,7 +304,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "ultraRare",
         number: "31/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "31"
     },
     {
         id: "151-034",
@@ -280,7 +313,8 @@ window.pokemon151Data = [
         type: "Plante",
         rarity: "ultraRare",
         number: "34/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "34"
     },
     {
         id: "151-143",
@@ -288,7 +322,8 @@ window.pokemon151Data = [
         type: "Incolore",
         rarity: "ultraRare",
         number: "143/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "143"
     },
     
     // Cartes secrètes rares
@@ -298,7 +333,8 @@ window.pokemon151Data = [
         type: "Psy",
         rarity: "secretRare",
         number: "151/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "151"
     },
     {
         id: "151-150",
@@ -306,7 +342,8 @@ window.pokemon151Data = [
         type: "Psy",
         rarity: "secretRare",
         number: "150/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "150"
     },
     {
         id: "151-149",
@@ -314,7 +351,8 @@ window.pokemon151Data = [
         type: "Dragon",
         rarity: "secretRare",
         number: "149/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "149"
     },
     
     // Cartes Dresseur
@@ -324,7 +362,8 @@ window.pokemon151Data = [
         type: "Objet",
         rarity: "trainer",
         number: "T01/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "160"
     },
     {
         id: "151-T02",
@@ -332,7 +371,8 @@ window.pokemon151Data = [
         type: "Objet",
         rarity: "trainer",
         number: "T02/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "161"
     },
     {
         id: "151-T03",
@@ -340,7 +380,8 @@ window.pokemon151Data = [
         type: "Objet",
         rarity: "trainer",
         number: "T03/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "162"
     },
     {
         id: "151-T04",
@@ -348,7 +389,8 @@ window.pokemon151Data = [
         type: "Objet",
         rarity: "trainer",
         number: "T04/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "163"
     },
     {
         id: "151-T05",
@@ -356,7 +398,8 @@ window.pokemon151Data = [
         type: "Objet",
         rarity: "trainer",
         number: "T05/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "164"
     },
     {
         id: "151-T06",
@@ -364,7 +407,8 @@ window.pokemon151Data = [
         type: "Objet",
         rarity: "trainer",
         number: "T06/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "165"
     },
     {
         id: "151-T07",
@@ -372,7 +416,8 @@ window.pokemon151Data = [
         type: "Supporter",
         rarity: "trainer",
         number: "T07/165",
-        imageUrl: null
+        setId: "sv3pt5",
+        localId: "166"
     },
     
     // Cartes Énergie
@@ -382,7 +427,8 @@ window.pokemon151Data = [
         type: "Énergie",
         rarity: "energy",
         number: "E01/165",
-        imageUrl: null
+        setId: "sm1",
+        localId: "164"
     },
     {
         id: "151-E02",
@@ -390,7 +436,8 @@ window.pokemon151Data = [
         type: "Énergie",
         rarity: "energy",
         number: "E02/165",
-        imageUrl: null
+        setId: "sm1",
+        localId: "167"
     },
     {
         id: "151-E03",
@@ -398,7 +445,8 @@ window.pokemon151Data = [
         type: "Énergie",
         rarity: "energy",
         number: "E03/165",
-        imageUrl: null
+        setId: "sm1",
+        localId: "166"
     },
     {
         id: "151-E04",
@@ -406,7 +454,8 @@ window.pokemon151Data = [
         type: "Énergie",
         rarity: "energy",
         number: "E04/165",
-        imageUrl: null
+        setId: "sm1",
+        localId: "165"
     },
     {
         id: "151-E05",
@@ -414,7 +463,8 @@ window.pokemon151Data = [
         type: "Énergie",
         rarity: "energy",
         number: "E05/165",
-        imageUrl: null
+        setId: "sm1",
+        localId: "163"
     },
     {
         id: "151-E06",
@@ -422,7 +472,8 @@ window.pokemon151Data = [
         type: "Énergie",
         rarity: "energy",
         number: "E06/165",
-        imageUrl: null
+        setId: "sm1",
+        localId: "162"
     },
     {
         id: "151-E07",
@@ -430,7 +481,8 @@ window.pokemon151Data = [
         type: "Énergie",
         rarity: "energy",
         number: "E07/165",
-        imageUrl: null
+        setId: "sm1",
+        localId: "168"
     },
     {
         id: "151-E08",
@@ -438,7 +490,8 @@ window.pokemon151Data = [
         type: "Énergie",
         rarity: "energy",
         number: "E08/165",
-        imageUrl: null
+        setId: "sm1",
+        localId: "161"
     },
     {
         id: "151-E09",
@@ -446,7 +499,8 @@ window.pokemon151Data = [
         type: "Énergie",
         rarity: "energy",
         number: "E09/165",
-        imageUrl: null
+        setId: "sm1",
+        localId: "169"
     },
     {
         id: "151-E10",
@@ -454,6 +508,7 @@ window.pokemon151Data = [
         type: "Énergie",
         rarity: "energy",
         number: "E10/165",
-        imageUrl: null
+        setId: "sm1",
+        localId: "160"
     }
 ];

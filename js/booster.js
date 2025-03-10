@@ -1,5 +1,6 @@
 /**
  * Classe qui gère l'ouverture de boosters Pokémon
+ * Avec distribution officielle des raretés
  */
 class BoosterOpener {
     constructor(setData) {
@@ -12,22 +13,23 @@ class BoosterOpener {
     }
 
     /**
-     * Distribution des raretés dans un booster standard du set 151
-     * Cette distribution est approximative et peut varier
+     * Distribution des raretés dans un booster standard selon les règles officielles
+     * Source: Site officiel Pokémon
      */
     static RARITY_DISTRIBUTION = {
-        common: 5,      // 5 cartes communes
+        common: 4,      // 4 cartes communes
         uncommon: 3,    // 3 cartes peu communes
-        rare: 1,        // 1 carte rare ou mieux
-        energyOrTrainer: 1  // 1 carte énergie ou dresseur
+        foils: 2,       // 2 cartes brillantes (dont au moins une rare ou plus)
+        rareOrBetter: 1, // 1 carte rare ou mieux (comptée dans les foils)
+        energy: 1       // 1 carte énergie
     };
 
     /**
-     * Probabilités d'obtenir des cartes de différentes raretés à la place d'une carte rare
+     * Probabilités d'obtenir des cartes de différentes raretés pour l'emplacement "rare ou mieux"
      */
     static RARE_SLOT_PROBABILITIES = {
-        rare: 0.75,      // 75% de chance d'avoir une rare standard
-        ultraRare: 0.20, // 20% de chance d'avoir une ultra rare (EX, Full Art, etc.)
+        rare: 0.80,      // 80% de chance d'avoir une rare standard
+        ultraRare: 0.15, // 15% de chance d'avoir une ultra rare (EX, Full Art, etc.)
         secretRare: 0.05 // 5% de chance d'avoir une secrète rare
     };
 
@@ -38,17 +40,17 @@ class BoosterOpener {
     generateBooster() {
         const booster = [];
         
-        // Ajouter les cartes communes
+        // 1. Ajouter les cartes communes (4 cartes)
         for (let i = 0; i < BoosterOpener.RARITY_DISTRIBUTION.common; i++) {
             booster.push(this.getRandomCardByRarity('common'));
         }
         
-        // Ajouter les cartes peu communes
+        // 2. Ajouter les cartes peu communes (3 cartes)
         for (let i = 0; i < BoosterOpener.RARITY_DISTRIBUTION.uncommon; i++) {
             booster.push(this.getRandomCardByRarity('uncommon'));
         }
         
-        // Ajouter la carte "rare ou mieux" basée sur les probabilités
+        // 3. Ajouter la carte "rare ou mieux" basée sur les probabilités
         const rareSlotRandom = Math.random();
         let rareSlotRarity = 'rare'; // Par défaut
         
@@ -65,9 +67,18 @@ class BoosterOpener {
         
         booster.push(this.getRandomCardByRarity(rareSlotRarity));
         
-        // Ajouter la carte énergie ou dresseur
-        const energyOrTrainer = Math.random() > 0.5 ? 'energy' : 'trainer';
-        booster.push(this.getRandomCardByRarity(energyOrTrainer));
+        // 4. Ajouter une deuxième carte brillante (généralement rare, parfois uncommon)
+        // Cette carte complète les 3 foils mentionnés (avec la rare ou mieux déjà ajoutée)
+        const secondFoilRandom = Math.random();
+        const secondFoilRarity = secondFoilRandom < 0.7 ? 'rare' : 'uncommon';
+        booster.push(this.getRandomCardByRarity(secondFoilRarity));
+        
+        if (secondFoilRarity === 'rare') {
+            this.stats.rare++;
+        }
+        
+        // 5. Ajouter la carte énergie
+        booster.push(this.getRandomCardByRarity('energy'));
         
         // Incrémenter le compteur de boosters ouverts
         this.stats.opened++;

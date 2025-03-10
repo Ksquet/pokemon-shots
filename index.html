@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/animations.css">
     <meta name="description" content="Simulateur d'ouverture de boosters Pokémon du set 151 en français">
+    <!-- Supprimer la balise Content-Security-Policy qui bloque les requêtes externes -->
+    <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self'"> -->
 </head>
 <body>
     <header>
@@ -29,10 +31,10 @@
             <div class="booster-container">
                 <div class="booster" id="booster-151">
                     <div class="booster-image">
-                        <img src="assets/images/booster-151.jpg" alt="Booster Pokémon 151" 
-                             onerror="this.src='https://via.placeholder.com/250x350?text=Booster+151'">
+                        <!-- L'erreur est ici, on remplace l'attribut onerror par une image générée directement -->
+                        <img alt="Booster Pokémon 151" id="booster-img">
                     </div>
-                    <button class="open-button">Ouvrir un booster</button>
+                    <button class="open-button" disabled>Chargement des cartes...</button>
                 </div>
             </div>
         </section>
@@ -62,7 +64,13 @@
         <p class="disclaimer">Ce site n'est pas affilié à Nintendo ou The Pokémon Company. Toutes les images de cartes appartiennent à leurs propriétaires respectifs.</p>
     </footer>
 
+    <!-- Données statiques (utilisées comme solution de secours) -->
     <script src="js/data/pokemon151.js"></script>
+    
+    <!-- Script d'intégration de l'API TCGdex -->
+    <script src="js/api/tcgdex-api.js"></script>
+    
+    <!-- Scripts principaux de l'application -->
     <script src="js/booster.js"></script>
     <script src="js/app.js"></script>
 </body>
