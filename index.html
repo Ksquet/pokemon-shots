@@ -7,8 +7,6 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/animations.css">
     <meta name="description" content="Simulateur d'ouverture de boosters Pokémon du set 151 en français">
-    <!-- Supprimer la balise Content-Security-Policy qui bloque les requêtes externes -->
-    <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self'"> -->
 </head>
 <body>
     <header>
@@ -31,7 +29,6 @@
             <div class="booster-container">
                 <div class="booster" id="booster-151">
                     <div class="booster-image">
-                        <!-- L'erreur est ici, on remplace l'attribut onerror par une image générée directement -->
                         <img alt="Booster Pokémon 151" id="booster-img">
                     </div>
                     <button class="open-button" disabled>Chargement des cartes...</button>
@@ -50,10 +47,7 @@
         </section>
     </main>
 
-    <!-- 
-    Panneau de statistiques amélioré avec taux de pull détaillés
-    À insérer dans index.html
-    -->
+    <!-- Panneau de statistiques -->
     <aside class="stats-panel hidden">
         <div class="stats-header">
             <h3>Statistiques</h3>
@@ -65,7 +59,7 @@
         </div>
         
         <div class="stats-content">
-            <!-- Statistiques de base (compteurs) -->
+            <!-- Statistiques de base -->
             <div class="basic-stats">
                 <p>Boosters ouverts: <span id="opened-count">0</span></p>
                 <p>Rares standard: <span id="rare-count">0</span></p>
@@ -109,6 +103,19 @@
         </div>
     </aside>
 
+    <footer>
+        <p>Pokemon Shots © 2025 - Simulateur non officiel</p>
+        <p class="disclaimer">Ce site n'est pas affilié à Nintendo ou The Pokémon Company. Toutes les images de cartes appartiennent à leurs propriétaires respectifs.</p>
+    </footer>
+
+    <!-- Indicateur de chargement -->
+    <div class="loading-indicator" id="loading-indicator">
+        <div class="loading-spinner"></div>
+        <p>Chargement des cartes en arrière-plan...</p>
+        <p class="loading-progress">0%</p>
+    </div>
+    
+    <!-- Styles pour le panneau de statistiques -->
     <style>
     .stats-panel {
         position: fixed;
@@ -184,56 +191,8 @@
         }
     }
     </style>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const statsPanel = document.querySelector('.stats-panel');
-        const toggleButton = statsPanel.querySelector('.toggle-stats-panel');
-
-        // Gestion de la réduction/extension du panneau
-        toggleButton.addEventListener('click', function() {
-            statsPanel.classList.toggle('collapsed');
-        });
-
-        // Réinitialisation des statistiques (conservation du code existant)
-        const resetButton = document.getElementById('reset-stats');
-        if (resetButton) {
-            resetButton.addEventListener('click', function() {
-                if (confirm('Êtes-vous sûr de vouloir réinitialiser toutes les statistiques?')) {
-                    if (window.boosterOpener) {
-                        window.boosterOpener.resetStats();
-                        if (typeof updateStats === 'function') {
-                            updateStats();
-                        }
-                    }
-                }
-            });
-        }
-    });
-    </script>
-
-    <footer>
-        <p>Pokemon Shots © 2025 - Simulateur non officiel</p>
-        <p class="disclaimer">Ce site n'est pas affilié à Nintendo ou The Pokémon Company. Toutes les images de cartes appartiennent à leurs propriétaires respectifs.</p>
-    </footer>
-
-    <!-- Données statiques (utilisées comme solution de secours) -->
-    <script src="js/data/pokemon151.js"></script>
     
-    <!-- Scripts principaux de l'application -->
-    <script src="js/booster.js"></script>
-
-    <!-- Script d'intégration de l'API TCGdex -->
-    <script src="js/api/tcgdex-api.js"></script>
-    <script src="js/app.js"></script>
-
-    <!-- Indicateur de chargement -->
-    <div class="loading-indicator" id="loading-indicator">
-        <div class="loading-spinner"></div>
-        <p>Chargement des cartes en arrière-plan...</p>
-        <p class="loading-progress">0%</p>
-    </div>
-
+    <!-- Styles pour l'indicateur de chargement -->
     <style>
     .loading-indicator {
         position: fixed;
@@ -291,68 +250,11 @@
     }
     </style>
 
-    <!-- Overlay pour l'agrandissement des cartes -->
-    <div id="card-overlay" class="card-overlay hidden">
-        <div class="card-zoom-container">
-            <img id="zoomed-card-image" src="" alt="Carte agrandie">
-        </div>
-    </div>
+    <!-- Données statiques (utilisées comme solution de secours) -->
+    <script src="js/data/pokemon151.js"></script>
     
-    <style>
-    .card-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.8);
-        z-index: 2000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-    
-    .card-overlay.show {
-        opacity: 1;
-    }
-    
-    .card-overlay.hidden {
-        display: none;
-    }
-    
-    .card-zoom-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        max-width: 90%;
-        max-height: 90%;
-    }
-    
-    #zoomed-card-image {
-        max-height: 80vh;
-        max-width: 90%;
-        box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
-        border-radius: 10px;
-    }
-    
-    /* Animation d'entrée pour la carte zoomée */
-    @keyframes zoomIn {
-        from {
-            opacity: 0;
-            transform: scale(0.8);
-        }
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
-    }
-    
-    .zooming-in {
-        animation: zoomIn 0.3s forwards;
-    }
-    </style>
+    <!-- Scripts de l'application -->
+    <script src="js/api/tcgdex-api.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
