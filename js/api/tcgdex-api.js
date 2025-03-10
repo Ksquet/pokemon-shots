@@ -25,9 +25,9 @@ const RARITY_MAP = {
     'Rare Secrète': 'secretRare',
     'Hyper rare': 'secretRare',
     'Secret Rare': 'secretRare',
-    'Illustration rare': 'ultraRare',
-    'Illustration spéciale rare': 'ultraRare',
-    'Double rare': 'doubleRare'
+    'Illustration rare': 'illustrationRare',  // Nouvelle catégorie
+    'Illustration spéciale rare': 'specialIllRare', // Nouvelle catégorie
+    'Double rare': 'doubleRare'  // Nouvelle catégorie
 };
 
 /**
@@ -58,12 +58,43 @@ function getValidCachedData() {
  * @returns {Object} Carte au format de l'application
  */
 function convertCardData(cardData) {
+    // Conserver la rareté originale exacte
+    const originalRarity = cardData.rarity;
+    
     // Déterminer la rareté pour l'application
     let rarity = 'common'; // Valeur par défaut
     
     if (cardData.rarity) {
         // Utiliser la correspondance si disponible, sinon valeur par défaut
         rarity = RARITY_MAP[cardData.rarity] || 'common';
+    }
+    
+    // Déterminer le type spécial en fonction de la rareté d'origine
+    let specialType = null;
+    
+    // AJOUT DE LOGS pour voir exactement quelle carte a quelle rareté
+    console.log(`Conversion: ${cardData.name} (${cardData.localId}), Rareté: ${cardData.rarity}`);
+    
+    if (originalRarity === 'Illustration rare') {
+        specialType = 'illustration';
+        console.log(`${cardData.name} est une Illustration Rare`);
+    } 
+    else if (originalRarity === 'Illustration spéciale rare') {
+        specialType = 'specialIll';
+        console.log(`${cardData.name} est une Special Illustration Rare`);
+    }
+    else if (originalRarity === 'Hyper rare' || originalRarity === 'Rare Secrète' || 
+             originalRarity === 'Secret Rare' || originalRarity === 'Arc-en-ciel Rare') {
+        specialType = 'hyper';
+        console.log(`${cardData.name} est une Hyper Rare`);
+    }
+    else if (originalRarity === 'Double rare') {
+        specialType = 'double';
+        console.log(`${cardData.name} est une Double Rare`);
+    }
+    else if (originalRarity === 'Ultra Rare') {
+        specialType = 'standard';
+        console.log(`${cardData.name} est une Ultra Rare standard`);
     }
     
     // Les types sont déjà en français
@@ -93,10 +124,39 @@ function convertCardData(cardData) {
         name: cardData.name,
         type: type,
         rarity: rarity,
+        specialType: specialType,
+        originalRarity: originalRarity, // Conserver la rareté originale
         number: `${cardData.localId}/165`,
         localId: cardData.localId,
         imageUrl: imageUrl
     };
+}
+
+function debugCardTypes() {
+    // Extraire les données actuelles du cache ou de l'API
+    const cachedData = getValidCachedData();
+    if (cachedData) {
+        const rarityCount = {};
+        
+        // Compter les cartes par rareté originale
+        cachedData.forEach(card => {
+            if (card.originalRarity) {
+                rarityCount[card.originalRarity] = (rarityCount[card.originalRarity] || 0) + 1;
+            }
+        });
+        
+        console.log("Distribution des raretés:", rarityCount);
+        
+        // Lister toutes les cartes illustrations rares
+        const illustrationRares = cachedData.filter(card => 
+            card.originalRarity === 'Illustration rare');
+        console.log("Illustrations Rares:", illustrationRares.map(c => `${c.name} (${c.localId})`));
+        
+        // Lister toutes les ultra rares
+        const ultraRares = cachedData.filter(card => 
+            card.originalRarity === 'Ultra Rare');
+        console.log("Ultra Rares:", ultraRares.map(c => `${c.name} (${c.localId})`));
+    }
 }
 
 /**
@@ -220,8 +280,11 @@ async function loadPokemon151Data() {
             window.loadingProgress.update(100);
         }
         
-        // Retourner les données statiques en cas d'erreur
-        return window.pokemon151Data || [];
+        console.error("Erreur lors du chargement des données de l'API:", error);
+        
+        // IMPORTANT: NE PAS utiliser les données statiques, retourner un tableau vide
+        // Cela forcera l'application à attendre que les vraies données de l'API soient disponibles
+        return [];
     }
 }
 

@@ -1,5 +1,6 @@
 /**
- * Module de gestion des statistiques
+ * Module de gestion des statistiques (version simplifiée)
+ * Focus uniquement sur les cartes Double Rare
  */
 
 /**
@@ -9,28 +10,22 @@
 function updateStats(stats) {
     // Mise à jour des compteurs basiques
     updateElementIfExists('opened-count', stats.opened);
-    updateElementIfExists('rare-count', stats.rare);
-    
-    // Pour les cartes ultra-rares, on additionne toutes les raretés supérieures
-    const totalUltraRareCount = (stats.ultraRare || 0) + 
-                                (stats.illustrationRare || 0) + 
-                                (stats.specialIllRare || 0) + 
-                                (stats.hyperRare || 0);
-    updateElementIfExists('ultra-rare-count', totalUltraRareCount);
-    
-    // Mise à jour des compteurs détaillés
     updateElementIfExists('double-rare-count', stats.doubleRare);
-    updateElementIfExists('standard-ultra-count', stats.ultraRare);
-    updateElementIfExists('ill-rare-count', stats.illustrationRare);
-    updateElementIfExists('special-ill-count', stats.specialIllRare);
-    updateElementIfExists('hyper-rare-count', stats.hyperRare);
-    updateElementIfExists('foil-energy-count', stats.foilEnergy);
+    
+    // Calculer le taux de pull pour les Double Rare
+    if (stats.opened > 0) {
+        const pullRate = stats.doubleRare / stats.opened;
+        const oneInX = Math.round(1 / pullRate) || 0;
+        
+        updateElementIfExists('double-rare-rate', (pullRate * 100).toFixed(2) + '%');
+        updateElementIfExists('double-rare-oneinx', oneInX);
+    }
 }
 
 /**
  * Met à jour l'élément HTML s'il existe
  * @param {string} id - ID de l'élément HTML
- * @param {number} value - Valeur à afficher
+ * @param {number|string} value - Valeur à afficher
  */
 function updateElementIfExists(id, value) {
     const element = document.getElementById(id);
@@ -50,7 +45,7 @@ function updatePullRates(pullRates) {
         tableBody.innerHTML = ''; // Effacer le contenu actuel
         
         for (const [key, data] of Object.entries(pullRates.comparison)) {
-            // Formater le nom de la carte (foilEnergy -> Foil Energy)
+            // Formater le nom de la carte (doubleRare -> Double Rare)
             const formattedName = key
                 .replace(/([A-Z])/g, ' $1')
                 .replace(/^./, str => str.toUpperCase());
@@ -87,36 +82,15 @@ function updatePullRates(pullRates) {
  */
 function initializeStatsPanel() {
     // S'assurer que le panneau existe
-    const detailedStats = document.getElementById('detailed-stats');
-    const pullRatesPanel = document.getElementById('pull-rates-panel');
+    const statsPanel = document.querySelector('.stats-panel');
     
-    if (detailedStats) {
-        // Créer les compteurs détaillés s'ils n'existent pas
-        const detailedCounters = [
-            { id: 'double-rare-count', label: 'Double Rares' },
-            { id: 'standard-ultra-count', label: 'Ultra Rares standard' },
-            { id: 'ill-rare-count', label: 'Illustration Rares' },
-            { id: 'special-ill-count', label: 'Special Illustration' },
-            { id: 'hyper-rare-count', label: 'Hyper Rares' }
-            // Suppression de la ligne 'foil-energy-count'
-        ];
-        
-        detailedCounters.forEach(counter => {
-            if (!document.getElementById(counter.id)) {
-                addStatElement('detailed-stats', counter.id, counter.label);
-            }
-        });
+    if (!statsPanel) {
+        createStatsPanel();
+        return;
     }
     
-    // Si l'élément foil-energy-count existe, le masquer
-    const foilEnergyCount = document.getElementById('foil-energy-count');
-    if (foilEnergyCount && foilEnergyCount.parentElement) {
-        foilEnergyCount.parentElement.style.display = 'none';
-    }
-    
-    if (pullRatesPanel && !document.getElementById('pull-rates-table-body')) {
-        createPullRatesTable('pull-rates-panel');
-    }
+    // Simplifier le panneau existant
+    simplifyStatsPanel(statsPanel);
     
     // Gestionnaire pour le bouton de réinitialisation
     const resetButton = document.getElementById('reset-stats');
@@ -133,7 +107,6 @@ function initializeStatsPanel() {
     
     // Gestionnaire pour réduire/agrandir le panneau
     const toggleButton = document.querySelector('.toggle-stats-panel');
-    const statsPanel = document.querySelector('.stats-panel');
     
     if (toggleButton && statsPanel) {
         toggleButton.addEventListener('click', function() {
@@ -143,52 +116,113 @@ function initializeStatsPanel() {
 }
 
 /**
- * Ajoute un élément statistique au panneau
- * @param {string} parentId - ID de l'élément parent
- * @param {string} id - ID du nouvel élément
- * @param {string} label - Libellé de la statistique
+ * Simplifie le panneau de statistiques existant
+ * @param {HTMLElement} panel - Panneau de statistiques
  */
-function addStatElement(parentId, id, label) {
-    const parent = document.getElementById(parentId);
-    if (parent) {
-        const paragraph = document.createElement('p');
-        paragraph.innerHTML = `${label}: <span id="${id}">0</span>`;
-        parent.appendChild(paragraph);
+function simplifyStatsPanel(panel) {
+    // Supprimer tous les contenus existants sauf le header
+    const header = panel.querySelector('.stats-header');
+    const content = panel.querySelector('.stats-content');
+    
+    if (content) {
+        content.innerHTML = '';
+        
+        // Ajouter uniquement les statistiques de base
+        const basicStats = document.createElement('div');
+        basicStats.className = 'basic-stats';
+        basicStats.innerHTML = `
+            <p>Boosters ouverts: <span id="opened-count">0</span></p>
+            <p>Double Rares: <span id="double-rare-count">0</span></p>
+            <p>Taux de pull: <span id="double-rare-rate">0%</span> (1 sur <span id="double-rare-oneinx">0</span>)</p>
+        `;
+        
+        content.appendChild(basicStats);
+        
+        // Créer le tableau simplifié pour les taux de pull
+        const pullRatesDiv = document.createElement('div');
+        pullRatesDiv.id = 'pull-rates-panel';
+        pullRatesDiv.className = 'pull-rates-panel';
+        pullRatesDiv.innerHTML = `
+            <h4>Comparaison des taux de pull</h4>
+            <p>Boosters ouverts: <span id="total-boosters-opened">0</span></p>
+            <table class="pull-rates-table">
+                <thead>
+                    <tr>
+                        <th>Type de carte</th>
+                        <th>Taux théorique</th>
+                        <th>Théorique (1 sur X)</th>
+                        <th>Taux réel</th>
+                        <th>Réel (1 sur X)</th>
+                        <th>Différence</th>
+                    </tr>
+                </thead>
+                <tbody id="pull-rates-table-body">
+                    <!-- Contenu généré dynamiquement -->
+                </tbody>
+            </table>
+        `;
+        
+        content.appendChild(pullRatesDiv);
+        
+        // Ajouter le bouton de réinitialisation
+        const resetButton = document.createElement('button');
+        resetButton.id = 'reset-stats';
+        resetButton.className = 'reset-button';
+        resetButton.textContent = 'Réinitialiser les statistiques';
+        
+        content.appendChild(resetButton);
     }
 }
 
 /**
- * Crée le tableau de comparaison des taux de pull
- * @param {string} parentId - ID de l'élément parent
+ * Crée un panneau de statistiques entièrement nouveau
  */
-function createPullRatesTable(parentId) {
-    const parent = document.getElementById(parentId);
-    if (!parent) return;
+function createStatsPanel() {
+    const panel = document.createElement('aside');
+    panel.className = 'stats-panel';
     
-    const tableContainer = document.createElement('div');
-    tableContainer.className = 'pull-rates-container';
-    
-    tableContainer.innerHTML = `
-        <h4>Comparaison des taux de pull</h4>
-        <p>Boosters ouverts: <span id="total-boosters-opened">0</span></p>
-        <table class="pull-rates-table">
-            <thead>
-                <tr>
-                    <th>Type de carte</th>
-                    <th>Taux théorique</th>
-                    <th>Théorique (1 sur X)</th>
-                    <th>Taux réel</th>
-                    <th>Réel (1 sur X)</th>
-                    <th>Différence</th>
-                </tr>
-            </thead>
-            <tbody id="pull-rates-table-body">
-                <!-- Contenu généré dynamiquement -->
-            </tbody>
-        </table>
+    panel.innerHTML = `
+        <div class="stats-header">
+            <h3>Statistiques</h3>
+            <button class="toggle-stats-panel" aria-label="Réduire/Agrandir le panneau de statistiques">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="stats-content">
+            <div class="basic-stats">
+                <p>Boosters ouverts: <span id="opened-count">0</span></p>
+                <p>Double Rares: <span id="double-rare-count">0</span></p>
+                <p>Taux de pull: <span id="double-rare-rate">0%</span> (1 sur <span id="double-rare-oneinx">0</span>)</p>
+            </div>
+            
+            <div id="pull-rates-panel" class="pull-rates-panel">
+                <h4>Comparaison des taux de pull</h4>
+                <p>Boosters ouverts: <span id="total-boosters-opened">0</span></p>
+                <table class="pull-rates-table">
+                    <thead>
+                        <tr>
+                            <th>Type de carte</th>
+                            <th>Taux théorique</th>
+                            <th>Théorique (1 sur X)</th>
+                            <th>Taux réel</th>
+                            <th>Réel (1 sur X)</th>
+                            <th>Différence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pull-rates-table-body">
+                        <!-- Contenu généré dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <button id="reset-stats" class="reset-button">Réinitialiser les statistiques</button>
+        </div>
     `;
     
-    parent.appendChild(tableContainer);
+    document.body.appendChild(panel);
 }
 
 export {

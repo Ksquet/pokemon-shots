@@ -93,16 +93,42 @@ function handleImageError(img, card) {
 function renderBoosterCards(booster, onReveal = null) {
     const cardElements = [];
     
+    console.log('[CardRenderer] Rendu de', booster.length, 'cartes');
+    
+    // Détection des Double Rare pour débogage
+    const doubleRares = booster.filter(card => 
+        card.isDoubleRare === true || card.specialType === 'double'
+    );
+    console.log('[CardRenderer] Le booster contient', doubleRares.length, 'Double Rare(s)');
+    
+    // Afficher les cartes Double Rare
+    if (doubleRares.length > 0) {
+        console.log('[CardRenderer] Double Rare(s) détectée(s):');
+        doubleRares.forEach(card => {
+            console.log(`  - ${card.name} (${card.id}, ${card.DEBUG_ORDER || 'pas d\'ordre'}, specialType: ${card.specialType}, isDoubleRare: ${card.isDoubleRare})`);
+        });
+    }
+    
     booster.forEach((card, index) => {
         const cardElement = document.createElement('div');
         cardElement.classList.add('card');
         cardElement.dataset.cardId = card.id;
+        
+        // Ajouter des attributs de données pour le débogage
+        cardElement.dataset.debug = card.DEBUG_ORDER || '';
+        cardElement.dataset.specialType = card.specialType || '';
+        cardElement.dataset.isDoubleRare = card.isDoubleRare || false;
         
         // Ajouter la classe de rareté pour les animations
         if (card.rarity === 'rare') {
             cardElement.classList.add('rare');
         } else if (['ultraRare', 'secretRare'].includes(card.rarity)) {
             cardElement.classList.add('ultra-rare');
+        }
+        
+        // Classe spécifique pour les Double Rare
+        if (card.specialType === 'double' || card.isDoubleRare) {
+            cardElement.classList.add('double-rare');
         }
         
         // Créer l'élément image
@@ -118,6 +144,38 @@ function renderBoosterCards(booster, onReveal = null) {
         
         // Ajouter un délai pour l'animation d'entrée
         cardElement.style.animationDelay = `${index * 0.1}s`;
+        
+        // Si c'est une Double Rare, ajouter un indicateur visuel
+        if (card.specialType === 'double' || card.isDoubleRare) {
+            const indicator = document.createElement('div');
+            indicator.className = 'debug-indicator';
+            indicator.innerHTML = 'DR';
+            indicator.style.position = 'absolute';
+            indicator.style.top = '0';
+            indicator.style.left = '0';
+            indicator.style.background = 'rgba(255, 215, 0, 0.8)';
+            indicator.style.color = 'black';
+            indicator.style.padding = '2px 5px';
+            indicator.style.fontSize = '12px';
+            indicator.style.fontWeight = 'bold';
+            indicator.style.borderRadius = '0 0 5px 0';
+            cardElement.appendChild(indicator);
+        }
+        
+        // Ajouter un indicateur d'ordre pour le débogage
+        if (card.DEBUG_ORDER) {
+            const orderIndicator = document.createElement('div');
+            orderIndicator.className = 'debug-order';
+            orderIndicator.innerHTML = card.DEBUG_ORDER;
+            orderIndicator.style.position = 'absolute';
+            orderIndicator.style.bottom = '0';
+            orderIndicator.style.right = '0';
+            orderIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
+            orderIndicator.style.color = 'white';
+            orderIndicator.style.padding = '2px 5px';
+            orderIndicator.style.fontSize = '10px';
+            cardElement.appendChild(orderIndicator);
+        }
         
         // Ajouter l'événement de clic pour révéler la carte
         cardElement.addEventListener('click', (e) => {
@@ -135,6 +193,10 @@ function renderBoosterCards(booster, onReveal = null) {
         
         cardElements.push(cardElement);
     });
+    
+    // Vérification finale
+    const doubleRareElements = cardElements.filter(el => el.classList.contains('double-rare')).length;
+    console.log(`[CardRenderer] Éléments DOM avec classe 'double-rare': ${doubleRareElements}`);
     
     return cardElements;
 }
