@@ -55,58 +55,118 @@
     À insérer dans index.html
     -->
     <aside class="stats-panel hidden">
-        <h3>Statistiques</h3>
+        <div class="stats-header">
+            <h3>Statistiques</h3>
+            <button class="toggle-stats-panel" aria-label="Réduire/Agrandir le panneau de statistiques">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </button>
+        </div>
         
-        <!-- Statistiques de base (compteurs) -->
         <div class="stats-content">
-            <p>Boosters ouverts: <span id="opened-count">0</span></p>
-            <p>Rares standard: <span id="rare-count">0</span></p>
-            <p>Ultra-rares: <span id="ultra-rare-count">0</span></p>
+            <!-- Statistiques de base (compteurs) -->
+            <div class="basic-stats">
+                <p>Boosters ouverts: <span id="opened-count">0</span></p>
+                <p>Rares standard: <span id="rare-count">0</span></p>
+                <p>Ultra-rares: <span id="ultra-rare-count">0</span></p>
+            </div>
+            
+            <!-- Statistiques détaillées par rareté -->
+            <div id="detailed-stats" class="detailed-stats">
+                <h4>Raretés détaillées:</h4>
+                <p>Double Rares: <span id="double-rare-count">0</span></p>
+                <p>Ultra Rares standard: <span id="standard-ultra-count">0</span></p>
+                <p>Illustration Rares: <span id="ill-rare-count">0</span></p>
+                <p>Special Illustration: <span id="special-ill-count">0</span></p>
+                <p>Hyper Rares: <span id="hyper-rare-count">0</span></p>
+                <p>Énergies brillantes: <span id="foil-energy-count">0</span></p>
+            </div>
+            
+            <!-- Comparaison des taux de pull -->
+            <div id="pull-rates-panel" class="pull-rates-panel">
+                <h4>Comparaison des taux de pull</h4>
+                <p>Boosters ouverts: <span id="total-boosters-opened">0</span></p>
+                <table class="pull-rates-table">
+                    <thead>
+                        <tr>
+                            <th>Type de carte</th>
+                            <th>Taux théorique</th>
+                            <th>Théorique (1 sur X)</th>
+                            <th>Taux réel</th>
+                            <th>Réel (1 sur X)</th>
+                            <th>Différence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pull-rates-table-body">
+                        <!-- Contenu généré dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Bouton pour réinitialiser les statistiques -->
+            <button id="reset-stats" class="reset-button">Réinitialiser les statistiques</button>
         </div>
-        
-        <!-- Statistiques détaillées par rareté -->
-        <div id="detailed-stats" class="detailed-stats">
-            <h4>Raretés détaillées:</h4>
-            <p>Double Rares: <span id="double-rare-count">0</span></p>
-            <p>Ultra Rares standard: <span id="standard-ultra-count">0</span></p>
-            <p>Illustration Rares: <span id="ill-rare-count">0</span></p>
-            <p>Special Illustration: <span id="special-ill-count">0</span></p>
-            <p>Hyper Rares: <span id="hyper-rare-count">0</span></p>
-            <p>Énergies brillantes: <span id="foil-energy-count">0</span></p>
-        </div>
-        
-        <!-- Comparaison des taux de pull -->
-        <div id="pull-rates-panel" class="pull-rates-panel">
-            <h4>Comparaison des taux de pull</h4>
-            <p>Boosters ouverts: <span id="total-boosters-opened">0</span></p>
-            <table class="pull-rates-table">
-                <thead>
-                    <tr>
-                        <th>Type de carte</th>
-                        <th>Taux théorique</th>
-                        <th>Théorique (1 sur X)</th>
-                        <th>Taux réel</th>
-                        <th>Réel (1 sur X)</th>
-                        <th>Différence</th>
-                    </tr>
-                </thead>
-                <tbody id="pull-rates-table-body">
-                    <!-- Contenu généré dynamiquement -->
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Bouton pour réinitialiser les statistiques -->
-        <button id="reset-stats" class="reset-button">Réinitialiser les statistiques</button>
     </aside>
 
-    <!-- Style supplémentaire pour le panneau de statistiques -->
     <style>
     .stats-panel {
+        position: fixed;
+        right: 20px;
+        top: calc(var(--header-height) + 20px);
+        background-color: var(--card-background);
+        border-radius: var(--border-radius);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         width: 320px;
         max-height: 80vh;
-        overflow-y: auto;
+        transition: max-height 0.3s ease, transform 0.3s ease;
+        overflow: hidden;
+        z-index: 10;
+    }
+
+    .stats-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         padding: 1rem;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .toggle-stats-panel {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s ease;
+    }
+
+    .toggle-stats-panel svg {
+        width: 24px;
+        height: 24px;
+        stroke: var(--text-color);
+        transition: transform 0.2s ease;
+    }
+
+    .stats-panel.collapsed .toggle-stats-panel svg {
+        transform: rotate(180deg);
+    }
+
+    .stats-panel.collapsed .stats-content {
+        display: none;
+    }
+
+    .stats-panel.collapsed {
+        max-height: 60px;
+        transform: translateY(-50%);
+    }
+
+    .stats-content {
+        padding: 1rem;
+        max-height: calc(80vh - 60px);
+        overflow-y: auto;
     }
 
     .detailed-stats,
@@ -116,63 +176,32 @@
         padding-top: 1rem;
     }
 
-    .pull-rates-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 0.5rem;
-        font-size: 0.8rem;
-    }
-
-    .pull-rates-table th,
-    .pull-rates-table td {
-        border: 1px solid #ddd;
-        padding: 4px;
-        text-align: center;
-    }
-
-    .pull-rates-table th {
-        background-color: #f5f5f5;
-    }
-
-    .pull-rates-table .positive {
-        color: green;
-    }
-
-    .pull-rates-table .negative {
-        color: red;
-    }
-
-    .pull-rates-table .neutral {
-        color: #333;
-    }
-
-    .reset-button {
-        margin-top: 1rem;
-        background-color: #ff3e3e;
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        cursor: pointer;
-        width: 100%;
-    }
-
-    .reset-button:hover {
-        background-color: #e62e2e;
+    @media (max-width: 768px) {
+        .stats-panel {
+            width: calc(100% - 40px);
+            right: 20px;
+            left: auto;
+        }
     }
     </style>
 
-    <!-- Script pour le bouton de réinitialisation des statistiques -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const statsPanel = document.querySelector('.stats-panel');
+        const toggleButton = statsPanel.querySelector('.toggle-stats-panel');
+
+        // Gestion de la réduction/extension du panneau
+        toggleButton.addEventListener('click', function() {
+            statsPanel.classList.toggle('collapsed');
+        });
+
+        // Réinitialisation des statistiques (conservation du code existant)
         const resetButton = document.getElementById('reset-stats');
         if (resetButton) {
             resetButton.addEventListener('click', function() {
                 if (confirm('Êtes-vous sûr de vouloir réinitialiser toutes les statistiques?')) {
-                    // Réinitialiser les statistiques
                     if (window.boosterOpener) {
                         window.boosterOpener.resetStats();
-                        // Mettre à jour l'affichage
                         if (typeof updateStats === 'function') {
                             updateStats();
                         }

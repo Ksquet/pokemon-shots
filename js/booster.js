@@ -91,52 +91,49 @@ class BoosterOpener {
         let ultraRareCount = 0;
         let hasRare = false;
         
+        // Tableau pour stocker toutes les cartes ultra-rares potentielles
+        const potentialUltraRares = [];
+        
         // 1. Déterminer quelles cartes spéciales apparaissent dans ce booster
         // en suivant EXACTEMENT les taux de pull
 
         // Hyper Rare (1 sur 51 packs) - La plus rare
-        if (Math.random() < BoosterOpener.PULL_RATES.hyperRare && ultraRareCount < BoosterOpener.MAX_ULTRA_RARES) {
+        if (Math.random() < BoosterOpener.PULL_RATES.hyperRare) {
             const card = this.getRandomCardByRarity('secretRare');
             card.isFoil = true;
             card.specialType = 'hyper';
-            foilCards.push(card);
-            ultraRareCount++;
-            hasRare = true;
-            this.stats.hyperRare++;
+            potentialUltraRares.push(card);
         }
         
         // Special Illustration Rare (1 sur 32 packs)
-        if (Math.random() < BoosterOpener.PULL_RATES.specialIllRare && ultraRareCount < BoosterOpener.MAX_ULTRA_RARES) {
+        if (Math.random() < BoosterOpener.PULL_RATES.specialIllRare) {
             const card = this.getRandomCardByRarity('ultraRare');
             card.isFoil = true;
             card.specialType = 'specialIll';
-            foilCards.push(card);
-            ultraRareCount++;
-            hasRare = true;
-            this.stats.specialIllRare++;
+            potentialUltraRares.push(card);
         }
         
         // Illustration Rare (1 sur 12 packs)
-        if (Math.random() < BoosterOpener.PULL_RATES.illustrationRare && ultraRareCount < BoosterOpener.MAX_ULTRA_RARES) {
+        if (Math.random() < BoosterOpener.PULL_RATES.illustrationRare) {
             const card = this.getRandomCardByRarity('ultraRare');
             card.isFoil = true;
             card.specialType = 'illustration';
-            foilCards.push(card);
-            ultraRareCount++;
-            hasRare = true;
-            this.stats.illustrationRare++;
+            potentialUltraRares.push(card);
         }
         
         // Ultra Rare standard (1 sur 16 packs)
-        if (Math.random() < BoosterOpener.PULL_RATES.ultraRare && ultraRareCount < BoosterOpener.MAX_ULTRA_RARES) {
+        if (Math.random() < BoosterOpener.PULL_RATES.ultraRare) {
             const card = this.getRandomCardByRarity('ultraRare');
             card.isFoil = true;
             card.specialType = 'standard';
-            foilCards.push(card);
-            ultraRareCount++;
-            hasRare = true;
-            this.stats.ultraRare++;
+            potentialUltraRares.push(card);
         }
+        
+        // Trier et limiter les ultra-rares à 2 maximum
+        const selectedUltraRares = potentialUltraRares.slice(0, 2);
+        
+        // Ajouter les ultra-rares sélectionnées
+        foilCards.push(...selectedUltraRares);
         
         // Double Rare (1 sur 8 packs)
         if (Math.random() < BoosterOpener.PULL_RATES.doubleRare) {
@@ -157,8 +154,16 @@ class BoosterOpener {
             this.stats.foilEnergy++;
         }
         
+        // Mettre à jour les statistiques
+        selectedUltraRares.forEach(card => {
+            if (card.specialType === 'standard') this.stats.ultraRare++;
+            else if (card.specialType === 'illustration') this.stats.illustrationRare++;
+            else if (card.specialType === 'specialIll') this.stats.specialIllRare++;
+            else if (card.specialType === 'hyper') this.stats.hyperRare++;
+        });
+        
         // 2. S'assurer qu'on a au moins une carte rare si aucune n'a été tirée
-        if (!hasRare) {
+        if (!hasRare && foilCards.length < 3) {
             const card = this.getRandomCardByRarity('rare');
             card.isFoil = true;
             foilCards.push(card);
@@ -166,78 +171,6 @@ class BoosterOpener {
         }
         
         // 3. Compléter jusqu'à avoir exactement 3 cartes foil
-        
-        // Si on a déjà plus de 3 cartes (ce qui est possible avec les probabilités),
-        // garder seulement les 3 premières, en s'assurant d'avoir au moins une rare et max 2 ultra-rares
-        if (foilCards.length > 3) {
-            // Vérifier si parmi les 3 premières on a au moins une rare
-            const first3Cards = foilCards.slice(0, 3);
-            
-            const hasRareIn3 = first3Cards.some(card => 
-                card.rarity === 'rare' || card.rarity === 'ultraRare' || card.rarity === 'secretRare'
-            );
-            
-            const ultraRaresIn3 = first3Cards.filter(card => 
-                card.rarity === 'ultraRare' || card.rarity === 'secretRare'
-            ).length;
-            
-            // Si la sélection est valide, la garder
-            if (hasRareIn3 && ultraRaresIn3 <= BoosterOpener.MAX_ULTRA_RARES) {
-                return first3Cards;
-            } else {
-                // Sinon, reconstruire une sélection valide
-                const validCards = [];
-                
-                // Ajouter d'abord jusqu'à 2 ultra-rares
-                const ultraRares = foilCards.filter(card => 
-                    card.rarity === 'ultraRare' || card.rarity === 'secretRare'
-                ).slice(0, BoosterOpener.MAX_ULTRA_RARES);
-                
-                for (const card of ultraRares) {
-                    validCards.push(card);
-                }
-                
-                // Ajouter des rares standard si on n'a pas d'ultra-rares
-                if (ultraRares.length === 0) {
-                    const rares = foilCards.filter(card => card.rarity === 'rare');
-                    if (rares.length > 0) {
-                        validCards.push(rares[0]);
-                    }
-                }
-                
-                // Compléter avec d'autres cartes non-ultra-rares
-                const others = foilCards.filter(card => 
-                    card.rarity !== 'ultraRare' && card.rarity !== 'secretRare' && 
-                    !validCards.includes(card)
-                );
-                
-                while (validCards.length < 3 && others.length > 0) {
-                    validCards.push(others.shift());
-                }
-                
-                // Compléter si nécessaire
-                while (validCards.length < 3) {
-                    if (!validCards.some(card => card.rarity === 'rare' || 
-                                                card.rarity === 'ultraRare' || 
-                                                card.rarity === 'secretRare')) {
-                        // Ajouter une rare si on n'en a pas
-                        const card = this.getRandomCardByRarity('rare');
-                        card.isFoil = true;
-                        validCards.push(card);
-                        this.stats.rare++;
-                    } else {
-                        // Sinon ajouter une peu commune
-                        const card = this.getRandomCardByRarity('uncommon');
-                        card.isFoil = true;
-                        validCards.push(card);
-                    }
-                }
-                
-                return validCards;
-            }
-        }
-        
-        // Si on a moins de 3 cartes, compléter le booster
         while (foilCards.length < 3) {
             // Déterminer quelle type de carte ajouter
             const randomValue = Math.random();
@@ -272,43 +205,6 @@ class BoosterOpener {
                     const card = this.getRandomCardByRarity('uncommon');
                     card.isFoil = true;
                     foilCards.push(card);
-                }
-            }
-        }
-        
-        // Vérification finale: y a-t-il au moins une carte rare ou mieux?
-        if (!foilCards.some(card => 
-            card.rarity === 'rare' || card.rarity === 'ultraRare' || card.rarity === 'secretRare')) {
-            // Remplacer la dernière carte par une rare
-            foilCards.pop();
-            const card = this.getRandomCardByRarity('rare');
-            card.isFoil = true;
-            foilCards.push(card);
-            this.stats.rare++;
-        }
-        
-        // Dernière vérification: pas plus de 2 ultra-rares
-        const ultraRares = foilCards.filter(card => 
-            card.rarity === 'ultraRare' || card.rarity === 'secretRare');
-        
-        if (ultraRares.length > BoosterOpener.MAX_ULTRA_RARES) {
-            // Remplacer les ultra-rares excédentaires par des rares
-            let count = 0;
-            for (let i = 0; i < foilCards.length && count < (ultraRares.length - BoosterOpener.MAX_ULTRA_RARES); i++) {
-                if (foilCards[i].rarity === 'ultraRare' || foilCards[i].rarity === 'secretRare') {
-                    // Après avoir gardé les 2 premières ultra-rares, remplacer les autres
-                    if (count >= BoosterOpener.MAX_ULTRA_RARES) {
-                        foilCards[i] = this.getRandomCardByRarity('rare');
-                        foilCards[i].isFoil = true;
-                        this.stats.rare++;
-                        
-                        // Ajuster les statistiques en conséquence
-                        if (foilCards[i].specialType === 'standard') this.stats.ultraRare--;
-                        else if (foilCards[i].specialType === 'illustration') this.stats.illustrationRare--;
-                        else if (foilCards[i].specialType === 'specialIll') this.stats.specialIllRare--;
-                        else if (foilCards[i].specialType === 'hyper') this.stats.hyperRare--;
-                    }
-                    count++;
                 }
             }
         }
