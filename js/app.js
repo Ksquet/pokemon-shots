@@ -16,6 +16,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ultraRareCount = document.getElementById('ultra-rare-count');
     const boosterImg = document.getElementById('booster-img');
 
+    // Masquer l'indicateur de chargement par défaut
+    const loadingIndicator = document.getElementById('loading-indicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
+
     // Variable pour stocker l'ouvreur de boosters
     let boosterOpener;
 
@@ -110,33 +116,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initialisation: récupérer les données des cartes
     try {
-        // Désactiver le bouton pendant le chargement
-        openButton.disabled = true;
-        openButton.textContent = 'Chargement des cartes...';
-        
-        // Vérifier si la fonction loadPokemon151Data existe
-        if (typeof window.loadPokemon151Data === 'function') {
-            // Charger les données du set 151 via l'API
-            const cardsData = await window.loadPokemon151Data();
-            
-            // Vérifier si les données ont été chargées avec succès
-            if (!cardsData || !Array.isArray(cardsData) || cardsData.length === 0) {
-                throw new Error('Impossible de récupérer les données des cartes');
-            }
-            
-            console.log(`${cardsData.length} cartes chargées avec succès`);
-            
-            // Initialiser l'ouvreur de boosters avec les données récupérées
-            boosterOpener = new BoosterOpener(cardsData);
-        } else {
-            // Si la fonction n'existe pas, utiliser les données statiques
-            console.warn("La fonction loadPokemon151Data n'est pas disponible, utilisation des données statiques.");
-            boosterOpener = new BoosterOpener(window.pokemon151Data);
-        }
-        
-        // Activer le bouton d'ouverture
-        openButton.disabled = false;
+        // Activer le bouton immédiatement avec les données statiques
         openButton.textContent = 'Ouvrir un booster';
+        openButton.disabled = false;
+        
+        // Initialiser d'abord avec les données statiques pour une utilisation immédiate
+        boosterOpener = new BoosterOpener(window.pokemon151Data);
+        
+        // Charger les données complètes en arrière-plan
+        loadCardDataInBackground();
         
     } catch (error) {
         console.error('Erreur lors de l\'initialisation:', error);
@@ -150,6 +138,60 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Activer le bouton d'ouverture
         openButton.disabled = false;
         openButton.textContent = 'Ouvrir un booster';
+    }
+
+    /**
+     * Charge les données des cartes en arrière-plan
+     */
+    async function loadCardDataInBackground() {
+        try {
+            // Vérifier si nous avons des données en cache avant de montrer l'indicateur
+            const cachedData = localStorage.getItem('pokemon151Data');
+            let shouldShowIndicator = true;
+            
+            if (cachedData) {
+                const { timestamp } = JSON.parse(cachedData);
+                const oneWeek = 7 * 24 * 60 * 60 * 1000;
+                
+                if (Date.now() - timestamp < oneWeek) {
+                    // Si les données en cache sont récentes, ne pas montrer l'indicateur
+                    shouldShowIndicator = false;
+                }
+            }
+            
+            // Afficher l'indicateur uniquement si on va charger depuis l'API
+            if (shouldShowIndicator && loadingIndicator) {
+                loadingIndicator.style.display = 'flex';
+            }
+            
+            // S'abonner aux mises à jour de progression
+            if (window.loadingProgress) {
+                window.loadingProgress.onUpdate((percentage) => {
+                    console.log(`Chargement des cartes: ${percentage}%`);
+                });
+            }
+            
+            // Charger les données complètes
+            if (typeof window.loadPokemon151Data === 'function') {
+                const cardsData = await window.loadPokemon151Data();
+                
+                // Vérifier si les données ont été chargées avec succès
+                if (cardsData && Array.isArray(cardsData) && cardsData.length > 0) {
+                    console.log(`${cardsData.length} cartes chargées avec succès`);
+                    
+                    // Mettre à jour l'ouvreur de boosters avec les données complètes
+                    boosterOpener = new BoosterOpener(cardsData);
+                }
+            }
+        } catch (error) {
+            console.error('Erreur lors du chargement en arrière-plan:', error);
+            // Les données statiques restent en place, pas besoin de modifier l'interface
+            
+            // Masquer l'indicateur en cas d'erreur
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+            }
+        }
     }
 
     // Gestionnaire d'événement pour l'ouverture d'un booster
