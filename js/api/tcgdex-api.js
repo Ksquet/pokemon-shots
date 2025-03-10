@@ -120,6 +120,11 @@ async function loadPokemon151Data() {
                         
                         // Construire l'URL de l'image
                         const imageUrl = `https://assets.tcgdex.net/fr/${fullSetPath}/${cardData.localId}/high.jpg`;
+
+                        // Après avoir récupéré les détails d'une carte
+                        if (cardData.category === 'Énergie' || cardData.name.includes('Énergie')) {
+                            console.log('Carte énergie détectée:', cardData);
+                        }
                         
                         return {
                             id: formattedId,

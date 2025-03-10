@@ -26,7 +26,7 @@ class BoosterOpener {
         });
         
         console.log("Distribution des raretés dans les données:", rarityStats);
-        
+
         this.stats = {
             opened: 0,
             rare: 0,
@@ -34,8 +34,7 @@ class BoosterOpener {
             ultraRare: 0,
             illustrationRare: 0,
             specialIllRare: 0,
-            hyperRare: 0,
-            foilEnergy: 0
+            hyperRare: 0
         };
         
         // Vérifier si les données contiennent toutes les raretés nécessaires
@@ -54,7 +53,6 @@ class BoosterOpener {
             rare: this.setData.some(card => card.rarity === 'rare'),
             ultraRare: this.setData.some(card => card.rarity === 'ultraRare'),
             secretRare: this.setData.some(card => card.rarity === 'secretRare'),
-            energy: this.setData.some(card => card.rarity === 'energy'),
             trainer: this.setData.some(card => card.rarity === 'trainer')
         };
     }
@@ -78,7 +76,7 @@ class BoosterOpener {
      * Source: Statistiques officielles
      */
     static PULL_RATES = {
-        foilEnergy: 0.2483,        // 24.83% - 1 sur 4 packs
+        // foilEnergy: 0.2483,        // 24.83% - 1 sur 4 packs
         doubleRare: 0.1328,        // 13.28% - 1 sur 8 packs
         ultraRare: 0.0644,         // 6.44% - 1 sur 16 packs
         illustrationRare: 0.0850,  // 8.50% - 1 sur 12 packs
@@ -101,48 +99,40 @@ class BoosterOpener {
         // Tableau qui contiendra toutes les cartes du booster
         const booster = [];
         
-        // 1. Ajouter les cartes communes (4 cartes)
+        
+        // 2. Ajouter les cartes communes (4 cartes)
         for (let i = 0; i < BoosterOpener.BOOSTER_STRUCTURE.common; i++) {
             const card = this.getRandomCardByRarity('common');
             booster.push(card);
         }
         
-        // 2. Ajouter les cartes peu communes (3 cartes)
-        // Si nous n'avons pas de cartes uncommon, utiliser des communes à la place
+        // 3. Ajouter les cartes peu communes (3 cartes)
         const uncommonRarity = this.availableRarities.uncommon ? 'uncommon' : 'common';
         for (let i = 0; i < BoosterOpener.BOOSTER_STRUCTURE.uncommon; i++) {
             const card = this.getRandomCardByRarity(uncommonRarity);
             booster.push(card);
         }
         
-        // 3. Générer les 3 emplacements foil avec strict maximum de 2 ultra-rares
+        // 4. Générer les 3 emplacements foil avec strict maximum de 2 ultra-rares
         const foilCards = this.generateFoilCards();
         
-        // 4. Ajouter les cartes foil au booster
+        // 5. Ajouter les cartes foil au booster
         for (const card of foilCards) {
             booster.push(card);
         }
         
-        // 5. Vérification finale du booster
+        // 6. Vérification finale du booster
         const verificationResult = this.verifyBoosterContent(booster);
         if (!verificationResult.isValid) {
             console.warn("Problème détecté dans le booster, correction appliquée:", verificationResult.message);
-            return this.generateBooster(retries + 1); // Tenter de régénérer avec un compteur de récursivité
+            return this.generateBooster(retries + 1);
         }
         
-        // 6. Incrémenter le compteur de boosters ouverts
+        // 7. Incrémenter le compteur de boosters ouverts
         this.stats.opened++;
         
-        // 7. Mélanger le booster pour que l'ordre des cartes soit aléatoire
+        // 8. Mélanger le booster pour que l'ordre des cartes soit aléatoire
         const shuffledBooster = this.shuffleArray(booster);
-        
-        // Ajouter ce log ici, avant de retourner le booster
-        console.log("Composition du booster:", shuffledBooster.map(card => ({
-            name: card.name,
-            rarity: card.rarity,
-            isFoil: card.isFoil,
-            specialType: card.specialType
-        })));
         
         return shuffledBooster;
     }
@@ -276,15 +266,6 @@ class BoosterOpener {
             this.stats.doubleRare++;
         }
         
-        // Foil Energy (1 sur 4 packs)
-        if (this.availableRarities.energy && Math.random() < BoosterOpener.PULL_RATES.foilEnergy) {
-            const card = this.getRandomCardByRarity('energy');
-            card.isFoil = true;
-            card.specialType = 'foil';
-            foilCards.push(card);
-            this.stats.foilEnergy++;
-        }
-        
         // 6. S'assurer qu'on a au moins une carte rare ou mieux
         if (!hasRare && foilCards.length < 3) {
             // Utiliser une rare si disponible, sinon utiliser une autre rareté
@@ -326,24 +307,7 @@ class BoosterOpener {
                 card.isFoil = true;
                 foilCards.push(card);
             }
-            else if (this.availableRarities.energy) {
-                // 30% de chance d'ajouter une énergie (sauf si déjà présente)
-                if (!foilCards.some(card => card.rarity === 'energy')) {
-                    const card = this.getRandomCardByRarity('energy');
-                    card.isFoil = true;
-                    foilCards.push(card);
-                } else if (this.availableRarities.uncommon) {
-                    // Si on a déjà une énergie, ajouter une peu commune
-                    const card = this.getRandomCardByRarity('uncommon');
-                    card.isFoil = true;
-                    foilCards.push(card);
-                } else {
-                    // Ou une commune si pas de peu communes
-                    const card = this.getRandomCardByRarity('common');
-                    card.isFoil = true;
-                    foilCards.push(card);
-                }
-            } else {
+            else {
                 // Si pas d'énergie, ajouter une commune
                 const card = this.getRandomCardByRarity('common');
                 card.isFoil = true;
@@ -368,7 +332,6 @@ class BoosterOpener {
             uncommon: 0,
             rare: 0,
             ultraRare: 0,
-            energy: 0,
             foils: 0
         };
         
@@ -381,7 +344,6 @@ class BoosterOpener {
             else if (card.rarity === 'uncommon') counts.uncommon++;
             else if (card.rarity === 'rare') counts.rare++;
             else if (card.rarity === 'ultraRare' || card.rarity === 'secretRare') counts.ultraRare++;
-            else if (card.rarity === 'energy') counts.energy++;
             
             // Compter les foils
             if (card.isFoil) counts.foils++;
@@ -506,8 +468,7 @@ class BoosterOpener {
             ultraRare: 0,
             illustrationRare: 0,
             specialIllRare: 0,
-            hyperRare: 0,
-            foilEnergy: 0
+            hyperRare: 0
         };
     }
 
@@ -529,7 +490,6 @@ class BoosterOpener {
         }
         
         const actual = {
-            foilEnergy: this.stats.foilEnergy / this.stats.opened,
             doubleRare: this.stats.doubleRare / this.stats.opened,
             ultraRare: this.stats.ultraRare / this.stats.opened,
             illustrationRare: this.stats.illustrationRare / this.stats.opened,
