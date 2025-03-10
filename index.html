@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon Shots - Simulateur de Boosters</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <meta name="description" content="Simulateur d'ouverture de boosters Pokémon du set 151 en français">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <h1>Pokemon Shots</h1>
+            <span class="subtitle">Simulateur de Boosters</span>
+        </div>
+        <nav>
+            <ul>
+                <li class="active"><a href="#">Set 151</a></li>
+                <li class="disabled"><a href="#" title="Bientôt disponible">Autres sets</a></li>
+                <li class="disabled"><a href="#" title="Bientôt disponible">Ma Collection</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="booster-selection">
+            <h2>Sélectionnez un booster</h2>
+            <div class="booster-container">
+                <div class="booster" id="booster-151">
+                    <div class="booster-image">
+                        <img src="assets/images/booster-151.jpg" alt="Booster Pokémon 151" 
+                             onerror="this.src='https://via.placeholder.com/250x350?text=Booster+151'">
+                    </div>
+                    <button class="open-button">Ouvrir un booster</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="booster-opening hidden" id="opening-area">
+            <div class="cards-container">
+                <!-- Les cartes seront insérées ici par JavaScript -->
+            </div>
+            <div class="buttons-container">
+                <button id="reveal-all">Tout révéler</button>
+                <button id="new-booster">Nouveau booster</button>
+            </div>
+        </section>
+    </main>
+
+    <aside class="stats-panel hidden">
+        <h3>Statistiques</h3>
+        <div class="stats-content">
+            <p>Boosters ouverts: <span id="opened-count">0</span></p>
+            <p>Cartes rares: <span id="rare-count">0</span></p>
+            <p>Cartes ultra-rares: <span id="ultra-rare-count">0</span></p>
+        </div>
+    </aside>
+
+    <footer>
+        <p>Pokemon Shots © 2025 - Simulateur non officiel</p>
+        <p class="disclaimer">Ce site n'est pas affilié à Nintendo ou The Pokémon Company. Toutes les images de cartes appartiennent à leurs propriétaires respectifs.</p>
+    </footer>
+
+    <script src="js/data/pokemon151.js"></script>
+    <script src="js/booster.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
