@@ -115,3 +115,21 @@
     filter: brightness(1.1);
     transform: scale(1.03) rotateY(0deg);
 }
+/* Flair visuel pour les cartes Reverse Holo */
+.card.reverse-holo.revealed {
+    box-shadow: 0 0 10px 3px rgba(70, 200, 255, 0.8),
+                0 0 18px 6px rgba(255, 100, 220, 0.45);
+}
+
+.card.reverse-holo.revealed::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 3px solid rgba(160, 240, 255, 0.9);
+    border-radius: 8px;
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, 0.08),
+        rgba(70, 200, 255, 0.12),
+        rgba(255, 100, 220, 0.10));
+}

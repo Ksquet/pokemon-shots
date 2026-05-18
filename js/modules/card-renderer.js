@@ -134,6 +134,10 @@ function renderBoosterCards(booster, onReveal = null) {
         if (card.specialType === 'doubleRare' || card.specialType === 'double' || card.isDoubleRare) {
             cardElement.classList.add('double-rare');
         }
+
+        if (card.isReverseHolo) {
+            cardElement.classList.add('reverse-holo');
+        }
         
         // Créer l'élément image
         const cardImage = document.createElement('img');
@@ -170,6 +174,22 @@ function renderBoosterCards(booster, onReveal = null) {
             indicator.style.fontWeight = 'bold';
             indicator.style.borderRadius = '0 0 5px 0';
             cardElement.appendChild(indicator);
+        }
+
+        if (card.isReverseHolo) {
+            const reverseIndicator = document.createElement('div');
+            reverseIndicator.className = 'reverse-holo-indicator';
+            reverseIndicator.innerHTML = 'RH';
+            reverseIndicator.style.position = 'absolute';
+            reverseIndicator.style.top = '0';
+            reverseIndicator.style.right = '0';
+            reverseIndicator.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(70,200,255,0.9), rgba(255,100,220,0.9))';
+            reverseIndicator.style.color = 'black';
+            reverseIndicator.style.padding = '2px 5px';
+            reverseIndicator.style.fontSize = '12px';
+            reverseIndicator.style.fontWeight = 'bold';
+            reverseIndicator.style.borderRadius = '0 0 0 5px';
+            cardElement.appendChild(reverseIndicator);
         }
         
         // Ajouter un indicateur d'ordre pour le débogage
