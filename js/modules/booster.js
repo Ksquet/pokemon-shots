@@ -27,6 +27,7 @@ class BoosterOpener {
         };
     }
 
+
     /**
      * Ajoute une entrée au journal de débogage.
      * @param {string} message - Message à journaliser.
