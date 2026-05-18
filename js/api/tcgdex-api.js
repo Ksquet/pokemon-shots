@@ -89,7 +89,29 @@ function convertCardData(cardData) {
     let specialType = specialRarities.includes(rarity) ? rarity : null;
     
     // AJOUT DE LOGS pour voir exactement quelle carte a quelle rareté
-    console.log(`Conversion: ${cardData.name} (${cardData.localId}), Rareté: ${cardData.rarity}, Rareté mappée: ${rarity}`);
+    console.log(`Conversion: ${cardData.name} (${cardData.localId}), Rareté: ${cardData.rarity}`);
+    
+    if (originalRarity === 'Illustration rare') {
+        specialType = 'illustrationRare';
+        console.log(`${cardData.name} est une Illustration Rare`);
+    } 
+    else if (originalRarity === 'Illustration spéciale rare') {
+        specialType = 'specialIllustrationRare';
+        console.log(`${cardData.name} est une Special Illustration Rare`);
+    }
+    else if (originalRarity === 'Hyper rare' || originalRarity === 'Rare Secrète' || 
+             originalRarity === 'Secret Rare' || originalRarity === 'Arc-en-ciel Rare') {
+        specialType = 'hyperRare';
+        console.log(`${cardData.name} est une Hyper Rare`);
+    }
+    else if (originalRarity === 'Double rare') {
+        specialType = 'doubleRare';
+        console.log(`${cardData.name} est une Double Rare`);
+    }
+    else if (originalRarity === 'Ultra Rare') {
+        specialType = 'ultraRare';
+        console.log(`${cardData.name} est une Ultra Rare standard`);
+    }
     
     // Les types sont déjà en français
     let type = 'Incolore'; // Valeur par défaut

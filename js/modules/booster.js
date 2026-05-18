@@ -29,34 +29,6 @@ class BoosterOpener {
 
 
     /**
-     * Retourne les catégories qui doivent alimenter les statistiques de hits.
-     * @returns {Array<string>} Catégories spéciales suivies.
-     */
-    getSpecialStatTypes() {
-        return ['doubleRare', 'ultraRare', 'illustrationRare', 'specialIllustrationRare', 'hyperRare'];
-    }
-
-    /**
-     * Normalise les anciens et nouveaux noms de types spéciaux.
-     * @returns {Object} Alias de types spéciaux vers les compteurs.
-     */
-    getSpecialTypeAliases() {
-        return {
-            double: 'doubleRare',
-            doubleRare: 'doubleRare',
-            standard: 'ultraRare',
-            ultraRare: 'ultraRare',
-            illustration: 'illustrationRare',
-            illustrationRare: 'illustrationRare',
-            specialIll: 'specialIllustrationRare',
-            specialIllRare: 'specialIllustrationRare',
-            specialIllustrationRare: 'specialIllustrationRare',
-            hyper: 'hyperRare',
-            hyperRare: 'hyperRare'
-        };
-    }
-
-    /**
      * Ajoute une entrée au journal de débogage.
      * @param {string} message - Message à journaliser.
      */
@@ -77,7 +49,6 @@ class BoosterOpener {
      */
     normalizeText(value) {
         return String(value || '')
-            .replace(/([a-z])([A-Z])/g, '$1 $2')
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
@@ -107,7 +78,7 @@ class BoosterOpener {
             return 'doubleRare';
         }
 
-        if (/special illustration rare|special ill rare|illustration speciale|speciale illustration|sir/.test(normalized)) {
+        if (/special illustration rare|illustration speciale|speciale illustration|sir/.test(normalized)) {
             return 'specialIllustrationRare';
         }
 
@@ -136,31 +107,6 @@ class BoosterOpener {
         }
 
         return 'unknown';
-    }
-
-
-    /**
-     * Détermine la rareté mappée d'une carte en tenant compte de specialType,
-     * rarity et originalRarity. Cela évite qu'une carte API mal normalisée
-     * comme Carabaffe avec originalRarity "Illustration rare" reste classée commune.
-     * @param {Object} card - Carte à classifier.
-     * @returns {string} Catégorie de rareté.
-     */
-    getMappedRarityForCard(card) {
-        const specialTypeAliases = this.getSpecialTypeAliases();
-        const specialStatTypes = this.getSpecialStatTypes();
-
-        if (card.specialType && specialTypeAliases[card.specialType]) {
-            return specialTypeAliases[card.specialType];
-        }
-
-        const originalRarityType = this.classifyRarity(card.originalRarity);
-        if (specialStatTypes.includes(originalRarityType)) {
-            return originalRarityType;
-        }
-
-        const rarity = card.rarity || 'unknown';
-        return this.rarityMapping?.[rarity] || this.classifyRarity(rarity);
     }
 
     /**
@@ -205,7 +151,8 @@ class BoosterOpener {
         };
 
         this.setData.forEach(card => {
-            const mappedRarity = this.getMappedRarityForCard(card);
+            const rarity = card.rarity || 'unknown';
+            const mappedRarity = this.rarityMapping[rarity] || 'unknown';
 
             if (mappedRarity in available) {
                 available[mappedRarity] = true;
@@ -244,7 +191,11 @@ class BoosterOpener {
      * @returns {Array} Cartes éligibles.
      */
     getCardsByMappedRarity(rarityType) {
-        return this.setData.filter(card => this.getMappedRarityForCard(card) === rarityType);
+        const originalRarities = Object.entries(this.rarityMapping)
+            .filter(([, mappedRarity]) => mappedRarity === rarityType)
+            .map(([originalRarity]) => originalRarity);
+
+        return this.setData.filter(card => originalRarities.includes(card.rarity));
     }
 
     /**
@@ -328,54 +279,32 @@ class BoosterOpener {
     }
 
     /**
-     * Tire la 10e carte: Illustration Rare, Special Illustration Rare ou Reverse Holo.
-     * @returns {Object} Carte du deuxième slot reverse.
-     */
-    pullSecondReverseSlot() {
-        const roll = Math.random();
-        const rates = BoosterOpener.PULL_RATES;
-
-        if (roll < rates.illustrationRare) {
-            const card = this.tryPullSpecialCard('illustrationRare', 'IR');
-            if (card) {
-                return card;
-            }
-        }
-
-        if (roll < rates.illustrationRare + rates.specialIllustrationRare) {
-            const card = this.tryPullSpecialCard('specialIllustrationRare', 'SIR');
-            if (card) {
-                return card;
-            }
-        }
-
-        return this.pullReverseHolo('RH2');
-    }
-
-    /**
      * Tire la carte du dernier slot: Rare, Double Rare, Ultra Rare ou Hyper Rare.
      * @returns {Object} Carte du slot rare.
      */
     pullRareSlot() {
         const roll = Math.random();
         const rates = BoosterOpener.PULL_RATES;
+        let accumulatedRate = rates.hyperRare;
 
-        if (roll < rates.hyperRare) {
+        if (roll < accumulatedRate) {
             const card = this.tryPullSpecialCard('hyperRare', 'HR');
             if (card) {
                 return card;
             }
         }
 
-        if (roll < rates.hyperRare + rates.doubleRare) {
-            const card = this.tryPullSpecialCard('doubleRare', 'DR');
+        accumulatedRate += rates.ultraRare;
+        if (roll < accumulatedRate) {
+            const card = this.tryPullSpecialCard('ultraRare', 'UR');
             if (card) {
                 return card;
             }
         }
 
-        if (roll < rates.hyperRare + rates.doubleRare + rates.ultraRare) {
-            const card = this.tryPullSpecialCard('ultraRare', 'UR');
+        accumulatedRate += rates.doubleRare;
+        if (roll < accumulatedRate) {
+            const card = this.tryPullSpecialCard('doubleRare', 'DR');
             if (card) {
                 return card;
             }
@@ -391,7 +320,7 @@ class BoosterOpener {
 
     /**
      * Génère un booster aléatoire de 11 cartes jouables (hors carte code), selon la structure 151:
-     * 5 communes, 3 peu communes, 1 reverse holo, 1 reverse-or-special et 1 rare ou mieux.
+     * 5 communes, 3 peu communes, 2 reverse holo et 1 rare ou mieux.
      * @returns {Array} Un tableau d'objets carte.
      */
     generateBooster() {
@@ -412,9 +341,15 @@ class BoosterOpener {
             booster.push(card);
         }
 
-        booster.push(this.pullReverseHolo('RH1'));
+        const firstReverseSlot = Math.random() < BoosterOpener.PULL_RATES.illustrationRare
+            ? this.tryPullSpecialCard('illustrationRare', 'IR')
+            : null;
+        booster.push(firstReverseSlot || this.pullReverseHolo('RH1'));
 
-        booster.push(this.pullSecondReverseSlot());
+        const secondReverseSlot = Math.random() < BoosterOpener.PULL_RATES.specialIllustrationRare
+            ? this.tryPullSpecialCard('specialIllustrationRare', 'SIR')
+            : null;
+        booster.push(secondReverseSlot || this.pullReverseHolo('RH2'));
 
         booster.push(this.pullRareSlot());
 
@@ -430,21 +365,10 @@ class BoosterOpener {
      */
     updateStatsFromBooster(booster) {
         booster.forEach(card => {
-            const statType = this.getStatTypeForCard(card);
-            if (statType && statType in this.stats) {
-                this.stats[statType]++;
+            if (card.specialType && card.specialType in this.stats) {
+                this.stats[card.specialType]++;
             }
         });
-    }
-
-    /**
-     * Détermine quelle statistique doit être incrémentée pour une carte.
-     * @param {Object} card - Carte à analyser.
-     * @returns {string|null} Type de statistique ou null.
-     */
-    getStatTypeForCard(card) {
-        const mappedRarity = this.getMappedRarityForCard(card);
-        return mappedRarity in this.stats ? mappedRarity : null;
     }
 
     /**
@@ -524,18 +448,17 @@ class BoosterOpener {
 BoosterOpener.BOOSTER_STRUCTURE = {
     common: 5,
     uncommon: 3,
-    reverseHolo: 1,
-    reverseOrSpecial: 1,
+    reverseHolo: 2,
     rare: 1
 };
 
-// Taux de pull par booster d'après la répartition demandée.
+// Taux de pull par booster d'après le guide fourni par l'utilisateur.
 BoosterOpener.PULL_RATES = {
+    doubleRare: 1 / 8,
+    ultraRare: 1 / 16,
     illustrationRare: 1 / 12,
     specialIllustrationRare: 1 / 32,
-    hyperRare: 1 / 51,
-    doubleRare: 1 / 8,
-    ultraRare: 1 / 16
+    hyperRare: 1 / 51
 };
 
 // Exposer la classe pour une utilisation sans serveur HTTP (file://) et avec des scripts classiques.
