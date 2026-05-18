@@ -24,7 +24,8 @@ function createDefaultAccountDb() {
                 createdAt: new Date().toISOString()
             }
         ],
-        boosters: []
+        boosters: [],
+        collections: {}
     };
 }
 
@@ -40,6 +41,7 @@ function loadAccountDb() {
         const db = JSON.parse(rawDb);
         db.users = Array.isArray(db.users) ? db.users : [];
         db.boosters = Array.isArray(db.boosters) ? db.boosters : [];
+        db.collections = db.collections && typeof db.collections === 'object' ? db.collections : {};
 
         if (!db.users.some(user => user.username === ADMIN_USERNAME)) {
             db.users.unshift({
@@ -105,6 +107,9 @@ function createAccountModule() {
     let modal = null;
     let adminPanel = null;
     let adminNavItem = null;
+    let collectionPanel = null;
+    let collectionNavItem = null;
+    let openCollectionAfterLogin = false;
 
     function getCurrentUser() {
         return currentUser;
@@ -136,6 +141,12 @@ function createAccountModule() {
         renderAccountUi();
         hideLogin();
         renderAdminPanel();
+        renderCollectionPanel();
+
+        if (openCollectionAfterLogin) {
+            openCollectionAfterLogin = false;
+            showCollectionView();
+        }
 
         if (typeof onSessionChange === 'function') {
             onSessionChange(user);
@@ -149,21 +160,81 @@ function createAccountModule() {
         localStorage.removeItem(ACCOUNT_SESSION_KEY);
         renderAccountUi();
         renderAdminPanel();
+        renderCollectionPanel();
 
         if (typeof onSessionChange === 'function') {
             onSessionChange(null);
         }
     }
 
-    function recordBooster(cards) {
-        if (!currentUser) {
+    function getCardKey(card) {
+        const rawKey = card.localId || String(card.number || '').split('/')[0] || String(card.id || '').split('-').pop() || card.name || '';
+        const numericKey = Number(rawKey);
+        return Number.isFinite(numericKey) && numericKey > 0 ? String(numericKey) : String(rawKey).trim();
+    }
+
+    function getCardLite(card) {
+        return {
+            key: getCardKey(card),
+            id: card.id,
+            localId: card.localId,
+            name: card.name,
+            rarity: card.rarity,
+            specialType: card.specialType || '',
+            number: card.number,
+            imageUrl: card.imageUrl,
+            type: card.type
+        };
+    }
+
+    function addCardsToCollection(usernameInput, cards) {
+        const username = normalizeUsername(usernameInput);
+
+        if (!username || !Array.isArray(cards) || !cards.length) {
+            return null;
+        }
+
+        const db = loadAccountDb();
+        db.collections ||= {};
+        db.collections[username] ||= {};
+
+        cards.forEach(card => {
+            const key = getCardKey(card);
+
+            if (!key) {
+                return;
+            }
+
+            const previous = db.collections[username][key] || {
+                ...getCardLite(card),
+                count: 0,
+                firstObtainedAt: new Date().toISOString()
+            };
+
+            db.collections[username][key] = {
+                ...previous,
+                ...getCardLite(card),
+                count: (previous.count || 0) + 1,
+                lastObtainedAt: new Date().toISOString()
+            };
+        });
+
+        saveAccountDb(db);
+        renderCollectionPanel();
+        return db.collections[username];
+    }
+
+    function recordBooster(cards, usernameOverride = null) {
+        const username = normalizeUsername(usernameOverride || currentUser?.username);
+
+        if (!username) {
             return null;
         }
 
         const db = loadAccountDb();
         const entry = {
             id: `booster-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            username: currentUser.username,
+            username,
             openedAt: new Date().toISOString(),
             setId: '151',
             cardCount: cards.length,
@@ -174,12 +245,16 @@ function createAccountModule() {
                 rarity: card.rarity,
                 specialType: card.specialType || '',
                 number: card.number,
+                localId: card.localId,
+                imageUrl: card.imageUrl,
+                type: card.type,
                 debugOrder: card.DEBUG_ORDER || ''
             }))
         };
 
         db.boosters.unshift(entry);
         saveAccountDb(db);
+        addCardsToCollection(username, cards);
         renderAdminPanel();
         return entry;
     }
@@ -330,6 +405,32 @@ function createAccountModule() {
         main.appendChild(adminPanel);
     }
 
+    function ensureCollectionPanel() {
+        if (!collectionNavItem) {
+            const navItems = [...document.querySelectorAll('nav li')];
+            collectionNavItem = navItems.find(item => item.textContent.trim() === 'Ma Collection') || null;
+
+            if (collectionNavItem) {
+                collectionNavItem.classList.remove('disabled');
+                collectionNavItem.innerHTML = '<button type="button">Ma Collection</button>';
+                collectionNavItem.querySelector('button').addEventListener('click', showCollectionView);
+            }
+        }
+
+        if (collectionPanel) {
+            return;
+        }
+
+        const main = document.querySelector('main');
+        if (!main) {
+            return;
+        }
+
+        collectionPanel = document.createElement('section');
+        collectionPanel.className = 'collection-panel hidden';
+        main.appendChild(collectionPanel);
+    }
+
     function formatDate(value) {
         return new Date(value).toLocaleString('fr-FR', {
             year: 'numeric',
@@ -349,6 +450,8 @@ function createAccountModule() {
 
         document.querySelector('.booster-selection')?.classList.add('hidden');
         document.getElementById('opening-area')?.classList.add('hidden');
+        document.querySelector('.party-panel')?.classList.add('hidden');
+        collectionPanel?.classList.add('hidden');
         adminPanel.classList.remove('hidden');
         renderAdminPanel();
     }
@@ -357,8 +460,46 @@ function createAccountModule() {
         if (adminPanel) {
             adminPanel.classList.add('hidden');
         }
+        if (collectionPanel) {
+            collectionPanel.classList.add('hidden');
+        }
 
+        document.querySelector('.party-panel')?.classList.add('hidden');
+
+        const openingArea = document.getElementById('opening-area');
+        const cardsContainer = openingArea?.querySelector('.cards-container');
+        const hasBoosterInProgress = Boolean(cardsContainer?.querySelector('.card, .pack-opening-intro'));
+
+        if (openingArea && hasBoosterInProgress) {
+            openingArea.classList.remove('hidden');
+            document.querySelector('.booster-selection')?.classList.add('hidden');
+            return;
+        }
+
+        openingArea?.classList.add('hidden');
         document.querySelector('.booster-selection')?.classList.remove('hidden');
+        window.pokemonShotsApp?.updatePartyOpenerPreview?.();
+    }
+
+    function showCollectionView() {
+        ensureCollectionPanel();
+
+        if (!collectionPanel) {
+            return;
+        }
+
+        if (!currentUser) {
+            openCollectionAfterLogin = true;
+            showLogin();
+            return;
+        }
+
+        document.querySelector('.booster-selection')?.classList.add('hidden');
+        document.getElementById('opening-area')?.classList.add('hidden');
+        document.querySelector('.admin-dashboard')?.classList.add('hidden');
+        document.querySelector('.party-panel')?.classList.add('hidden');
+        collectionPanel.classList.remove('hidden');
+        renderCollectionPanel();
     }
 
     function getAdminSummary(db) {
@@ -382,6 +523,117 @@ function createAccountModule() {
                 <small>${card.number || ''}</small>
             </li>
         `).join('');
+    }
+
+    function sortCardsByNumber(cards) {
+        return [...cards].sort((a, b) => {
+            const aNumber = Number(a.localId || String(a.number || '').split('/')[0]) || 9999;
+            const bNumber = Number(b.localId || String(b.number || '').split('/')[0]) || 9999;
+            return aNumber - bNumber || String(a.name || '').localeCompare(String(b.name || ''));
+        });
+    }
+
+    function getCollectionForUser(username) {
+        const db = loadAccountDb();
+        return db.collections?.[normalizeUsername(username)] || {};
+    }
+
+    function getAllSetCards() {
+        const cards = window.boosterOpener?.setData || window.pokemon151Data || [];
+        const seen = new Set();
+
+        return sortCardsByNumber(cards).filter(card => {
+            const key = getCardKey(card);
+
+            if (!key || seen.has(key)) {
+                return false;
+            }
+
+            seen.add(key);
+            return true;
+        });
+    }
+
+    function renderCollectionCard(card, collection) {
+        const key = getCardKey(card);
+        const owned = collection[key];
+        const count = owned?.count || 0;
+        const imageUrl = card.imageUrl || owned?.imageUrl || `assets/images/cards/151/${card.id}.jpg`;
+
+        return `
+            <article class="collection-card ${count ? 'is-owned' : 'is-missing'}">
+                <div class="collection-card-image">
+                    <img src="${imageUrl}" alt="${card.name}" loading="lazy" data-card-key="${key}">
+                    <strong>x${count}</strong>
+                </div>
+                <div>
+                    <span>${card.number || card.localId || ''}</span>
+                    <h3>${card.name}</h3>
+                    <p>${card.rarity || 'standard'}</p>
+                </div>
+            </article>
+        `;
+    }
+
+    function renderCollectionPanel() {
+        ensureCollectionPanel();
+
+        if (!collectionPanel) {
+            return;
+        }
+
+        if (!currentUser) {
+            collectionPanel.innerHTML = `
+                <div class="collection-header">
+                    <div>
+                        <p>Ma Collection</p>
+                        <h2>Connecte-toi pour voir tes cartes</h2>
+                    </div>
+                    <button type="button" id="collection-login-button">Connexion</button>
+                </div>
+            `;
+            collectionPanel.querySelector('#collection-login-button')?.addEventListener('click', showLogin);
+            return;
+        }
+
+        const allCards = getAllSetCards();
+        const collection = getCollectionForUser(currentUser.username);
+        const ownedUnique = allCards.filter(card => (collection[getCardKey(card)]?.count || 0) > 0).length;
+        const ownedTotal = Object.values(collection).reduce((total, card) => total + (card.count || 0), 0);
+
+        collectionPanel.innerHTML = `
+            <div class="collection-header">
+                <div>
+                    <p>Ma Collection</p>
+                    <h2>${currentUser.displayName || currentUser.username}</h2>
+                </div>
+                <button type="button" id="collection-back-button">Retour aux boosters</button>
+            </div>
+            <div class="collection-summary">
+                <article><span>Cartes differentes</span><strong>${ownedUnique}/${allCards.length}</strong></article>
+                <article><span>Exemplaires</span><strong>${ownedTotal}</strong></article>
+            </div>
+            <div class="collection-grid">
+                ${allCards.map(card => renderCollectionCard(card, collection)).join('')}
+            </div>
+        `;
+
+        collectionPanel.querySelector('#collection-back-button')?.addEventListener('click', showBoosterView);
+        bindCollectionImageFallbacks(allCards);
+    }
+
+    function bindCollectionImageFallbacks(cards) {
+        const cardsByKey = new Map(cards.map(card => [getCardKey(card), card]));
+
+        collectionPanel.querySelectorAll('.collection-card img').forEach(img => {
+            img.addEventListener('error', () => {
+                const card = cardsByKey.get(img.dataset.cardKey);
+
+                if (card && typeof handleImageError === 'function') {
+                    handleImageError(img, card);
+                }
+            }, { once: true });
+        });
     }
 
     function renderBoosterEntry(entry) {
@@ -455,7 +707,9 @@ function createAccountModule() {
         onSessionChange = options.onSessionChange || null;
         renderAccountUi();
         ensureLoginModal();
+        ensureCollectionPanel();
         renderAdminPanel();
+        renderCollectionPanel();
 
         if (!currentUser) {
             renderAccountUi();
@@ -468,6 +722,8 @@ function createAccountModule() {
         init,
         getCurrentUser,
         getUsers: () => loadAccountDb().users,
+        addCardsToCollection,
+        refreshCollection: renderCollectionPanel,
         showLogin,
         createOrLogin,
         logout,

@@ -1191,7 +1191,8 @@ h2 {
     white-space: nowrap;
 }
 
-.party-nav-item button {
+.party-nav-item button,
+nav li button {
     border: 0;
     border-bottom: 3px solid transparent;
     background: transparent;
@@ -1202,8 +1203,142 @@ h2 {
     padding: 0.5rem;
 }
 
-.party-nav-item button:hover {
+.party-nav-item button:hover,
+nav li button:hover {
     border-bottom-color: white;
+}
+
+.collection-panel {
+    display: grid;
+    gap: 1rem;
+}
+
+.collection-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.collection-header p {
+    color: #777;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.collection-header h2 {
+    margin: 0;
+    text-align: left;
+}
+
+.collection-header button {
+    border: 0;
+    border-radius: 999px;
+    background: var(--secondary-color);
+    color: white;
+    cursor: pointer;
+    font-weight: 800;
+    padding: 0.7rem 1rem;
+}
+
+.collection-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+
+.collection-summary article {
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    padding: 1rem;
+}
+
+.collection-summary span {
+    display: block;
+    color: #666;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.collection-summary strong {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--primary-color);
+    font-size: 1.9rem;
+    line-height: 1;
+}
+
+.collection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    gap: 0.8rem;
+}
+
+.collection-card {
+    display: grid;
+    gap: 0.55rem;
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 7px 20px rgba(0, 0, 0, 0.07);
+    overflow: hidden;
+    padding: 0.6rem;
+}
+
+.collection-card-image {
+    position: relative;
+}
+
+.collection-card-image img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 165 / 230;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.collection-card-image strong {
+    position: absolute;
+    right: 0.35rem;
+    bottom: 0.35rem;
+    border-radius: 999px;
+    background: rgba(20, 20, 24, 0.82);
+    color: white;
+    font-size: 0.78rem;
+    padding: 0.25rem 0.45rem;
+}
+
+.collection-card h3 {
+    margin: 0.2rem 0;
+    color: var(--text-color);
+    font-size: 0.88rem;
+    line-height: 1.15;
+}
+
+.collection-card span,
+.collection-card p {
+    color: #666;
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.collection-card p {
+    font-weight: 700;
+}
+
+.collection-card.is-missing {
+    background: #f1f2f5;
+    color: #777;
+}
+
+.collection-card.is-missing img {
+    filter: grayscale(1);
+    opacity: 0.28;
 }
 
 .party-panel {
@@ -1250,6 +1385,7 @@ h2 {
 }
 
 .party-setup section,
+.party-active-settings,
 .party-result,
 .party-roster article {
     border: 1px solid rgba(0, 0, 0, 0.07);
@@ -1277,6 +1413,88 @@ h2 {
     font-weight: 800;
     margin-top: 0.55rem;
     padding: 0.65rem;
+}
+
+.party-settings {
+    margin-top: 0.8rem;
+}
+
+.party-settings summary {
+    border-radius: 8px;
+    background: #eef2ff;
+    color: var(--secondary-color);
+    cursor: pointer;
+    font-weight: 800;
+    list-style: none;
+    padding: 0.75rem;
+}
+
+.party-settings summary::-webkit-details-marker {
+    display: none;
+}
+
+.party-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.8rem;
+    margin-top: 0.75rem;
+}
+
+.party-settings-grid section {
+    display: grid;
+    gap: 0.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 8px;
+    background: #f8f9fc;
+    box-shadow: none;
+    padding: 0.75rem;
+}
+
+.party-settings-grid h4 {
+    margin: 0;
+    color: var(--primary-color);
+}
+
+.party-setup .party-setting-field,
+.party-setting-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 5.25rem;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0;
+    background: transparent;
+    color: #555;
+    font-size: 0.82rem;
+    font-weight: 800;
+    padding: 0;
+}
+
+.party-setting-field input {
+    width: 100%;
+    border: 1px solid #d8dce6;
+    border-radius: 8px;
+    font: inherit;
+    padding: 0.45rem 0.5rem;
+}
+
+.party-active-settings {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.party-active-settings .party-settings {
+    margin-top: 0;
+}
+
+.party-active-settings > button {
+    justify-self: start;
+    border: 0;
+    border-radius: 999px;
+    background: var(--secondary-color);
+    color: white;
+    cursor: pointer;
+    font-weight: 800;
+    padding: 0.7rem 1rem;
 }
 
 .party-draft-grid {

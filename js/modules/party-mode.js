@@ -4,6 +4,24 @@
 
 const PARTY_STORAGE_KEY = 'pokemonShotsPartyState';
 const PARTY_PICK_SIZE = 6;
+const PARTY_DEFAULT_SETTINGS = {
+    poolRatios: {
+        common: 0.5,
+        uncommon: 0.5
+    },
+    draftOptionCount: PARTY_PICK_SIZE,
+    drinkValues: {
+        ownedCard: 1,
+        holo: 1,
+        reverseHolo: 0,
+        doubleRare: 4,
+        ultraRare: 7,
+        illustrationRare: 5,
+        specialIllustrationRare: 7,
+        hyperRare: 7,
+        fallbackHit: 7
+    }
+};
 
 function createPartyMode() {
     let app = null;
@@ -70,6 +88,42 @@ function createPartyMode() {
         };
     }
 
+    function cloneDefaultSettings() {
+        return JSON.parse(JSON.stringify(PARTY_DEFAULT_SETTINGS));
+    }
+
+    function clampNumber(value, min, max, fallback) {
+        const number = Number(value);
+
+        if (!Number.isFinite(number)) {
+            return fallback;
+        }
+
+        return Math.min(max, Math.max(min, number));
+    }
+
+    function normalizeSettings(settings = {}) {
+        const defaults = cloneDefaultSettings();
+
+        return {
+            poolRatios: {
+                common: clampNumber(settings.poolRatios?.common, 0, 1, defaults.poolRatios.common),
+                uncommon: clampNumber(settings.poolRatios?.uncommon, 0, 1, defaults.poolRatios.uncommon)
+            },
+            draftOptionCount: Math.round(clampNumber(settings.draftOptionCount, 2, 12, defaults.draftOptionCount)),
+            drinkValues: Object.fromEntries(
+                Object.entries(defaults.drinkValues).map(([key, fallback]) => [
+                    key,
+                    Math.round(clampNumber(settings.drinkValues?.[key], 0, 99, fallback))
+                ])
+            )
+        };
+    }
+
+    function getSettings() {
+        return normalizeSettings(state?.settings);
+    }
+
     function getPlayerPullStats(username, history) {
         const openedBoosters = history.filter(booster => booster.opener === username);
         const stats = createEmptySpecialStats();
@@ -103,6 +157,8 @@ function createPartyMode() {
         if (!Array.isArray(state.boosterHistory)) {
             state.boosterHistory = state.lastResult ? [state.lastResult] : [];
         }
+
+        state.settings = normalizeSettings(state.settings);
 
         recalculatePlayerStatsFromHistory();
     }
@@ -145,7 +201,8 @@ function createPartyMode() {
 
     function getTargetPickCount(rarityType, playerCount) {
         const poolSize = getPool(rarityType).length;
-        return Math.floor((Math.floor(poolSize / 2)) / playerCount) * playerCount;
+        const ratio = getSettings().poolRatios[rarityType] ?? 0.5;
+        return Math.floor(Math.floor(poolSize * ratio) / playerCount) * playerCount;
     }
 
     function ensurePartyPanel() {
@@ -173,6 +230,7 @@ function createPartyMode() {
         document.querySelector('.booster-selection')?.classList.add('hidden');
         document.getElementById('opening-area')?.classList.add('hidden');
         document.querySelector('.admin-dashboard')?.classList.add('hidden');
+        document.querySelector('.collection-panel')?.classList.add('hidden');
     }
 
     function showPanel() {
@@ -203,10 +261,11 @@ function createPartyMode() {
             .sort((a, b) => a.username.localeCompare(b.username));
     }
 
-    function createInitialState(players, mode) {
+    function createInitialState(players, mode, settings) {
         return {
             active: true,
             mode,
+            settings: normalizeSettings(settings),
             players: shuffle(players).map(username => ({
                 username,
                 ownedCards: {
@@ -225,8 +284,8 @@ function createPartyMode() {
         };
     }
 
-    function startParty(players, mode) {
-        state = createInitialState(players, mode);
+    function startParty(players, mode, settings) {
+        state = createInitialState(players, mode, settings);
 
         if (mode === 'random') {
             distributeRandom('common');
@@ -281,7 +340,7 @@ function createPartyMode() {
         const alreadyAssigned = getAssignedKeys(draft.rarityType);
         const pool = shuffle(getPool(draft.rarityType).filter(card => !alreadyAssigned.has(card.key)));
         const remainingToPick = draft.target - draft.picked;
-        const optionCount = Math.min(PARTY_PICK_SIZE, pool.length, remainingToPick + state.players.length - 1);
+        const optionCount = Math.min(getSettings().draftOptionCount, pool.length, remainingToPick + state.players.length - 1);
 
         draft.options = pool.slice(0, optionCount);
         const start = draft.round % state.players.length;
@@ -340,16 +399,38 @@ function createPartyMode() {
     }
 
     function getHitDrinkValue(card) {
+        const values = getSettings().drinkValues;
+
+        if (card.isReverseHolo) {
+            return values.reverseHolo;
+        }
+
         if (card.specialType === 'doubleRare' || card.isDoubleRare) {
-            return 4;
+            return values.doubleRare;
         }
 
         if (card.specialType === 'illustrationRare') {
-            return 5;
+            return values.illustrationRare;
+        }
+
+        if (card.specialType === 'ultraRare') {
+            return values.ultraRare;
+        }
+
+        if (card.specialType === 'specialIllustrationRare') {
+            return values.specialIllustrationRare;
+        }
+
+        if (card.specialType === 'hyperRare') {
+            return values.hyperRare;
         }
 
         if (card.specialType || ['ultraRare', 'hyperRare', 'secretRare'].includes(card.rarity)) {
-            return 7;
+            return values.fallbackHit;
+        }
+
+        if (card.isFoil) {
+            return values.holo;
         }
 
         return 0;
@@ -367,14 +448,16 @@ function createPartyMode() {
         boosterCards.forEach(card => {
             const owner = getOwnerForCard(card);
             if (owner) {
-                const drinks = 1;
-                distribution[owner.username] += drinks;
-                events.push({
-                    type: 'owned-card',
-                    username: owner.username,
-                    drinks,
-                    cardName: card.name
-                });
+                const drinks = getSettings().drinkValues.ownedCard;
+                if (drinks > 0) {
+                    distribution[owner.username] += drinks;
+                    events.push({
+                        type: 'owned-card',
+                        username: owner.username,
+                        drinks,
+                        cardName: card.name
+                    });
+                }
             }
 
             const hitDrinks = getHitDrinkValue(card);
@@ -396,6 +479,7 @@ function createPartyMode() {
             nextOpener: nextOpener.username,
             distribution,
             events,
+            settings: getSettings(),
             cards: boosterCards.map(card => ({
                 ...getCardLite(card),
                 mappedRarity: app?.boosterOpener?.getMappedRarity(card),
@@ -456,6 +540,7 @@ function createPartyMode() {
 
     function renderSetup() {
         const users = getSelectableUsers();
+        const settings = normalizeSettings();
         return `
             <div class="party-header">
                 <div>
@@ -480,10 +565,84 @@ function createPartyMode() {
                     <h3>Preparation</h3>
                     <label><input type="radio" name="party-mode" value="draft" checked> Draft manuel</label>
                     <label><input type="radio" name="party-mode" value="random"> Distribution random</label>
+                    ${renderPartySettings(settings)}
                     <button type="button" id="party-start">Lancer la soiree</button>
                 </section>
             </div>
         `;
+    }
+
+    function renderSettingInput(key, label, value, step = 1, min = 0, max = 99) {
+        return `
+            <label class="party-setting-field">
+                <span>${label}</span>
+                <input type="number" name="${key}" value="${value}" min="${min}" max="${max}" step="${step}">
+            </label>
+        `;
+    }
+
+    function renderPartySettings(settings) {
+        return `
+            <details class="party-settings">
+                <summary>Parametres</summary>
+                <div class="party-settings-grid">
+                    <section>
+                        <h4>Pool de draft</h4>
+                        ${renderSettingInput('commonRatio', 'Ratio communes', settings.poolRatios.common, 0.01, 0, 1)}
+                        ${renderSettingInput('uncommonRatio', 'Ratio uncommons', settings.poolRatios.uncommon, 0.01, 0, 1)}
+                        ${renderSettingInput('draftOptionCount', 'Choix par tour', settings.draftOptionCount, 1, 2, 12)}
+                    </section>
+                    <section>
+                        <h4>Gorgees</h4>
+                        ${renderSettingInput('ownedCardDrinks', 'Carte possedee', settings.drinkValues.ownedCard)}
+                        ${renderSettingInput('holoDrinks', 'Holo standard', settings.drinkValues.holo)}
+                        ${renderSettingInput('reverseHoloDrinks', 'Reverse holo', settings.drinkValues.reverseHolo)}
+                        ${renderSettingInput('doubleRareDrinks', 'Double Rare', settings.drinkValues.doubleRare)}
+                        ${renderSettingInput('ultraRareDrinks', 'Ultra Rare', settings.drinkValues.ultraRare)}
+                        ${renderSettingInput('illustrationRareDrinks', 'Illustration Rare', settings.drinkValues.illustrationRare)}
+                        ${renderSettingInput('specialIllustrationRareDrinks', 'Special Illustration', settings.drinkValues.specialIllustrationRare)}
+                        ${renderSettingInput('hyperRareDrinks', 'Hyper Rare', settings.drinkValues.hyperRare)}
+                        ${renderSettingInput('fallbackHitDrinks', 'Autre hit', settings.drinkValues.fallbackHit)}
+                    </section>
+                </div>
+            </details>
+        `;
+    }
+
+    function renderActivePartySettings() {
+        const settings = getSettings();
+        return `
+            <section class="party-active-settings">
+                ${renderPartySettings(settings)}
+                <button type="button" id="party-save-settings">Appliquer aux prochains boosters</button>
+            </section>
+        `;
+    }
+
+    function getNumberInputValue(name, fallback) {
+        const input = panel?.querySelector(`[name="${name}"]`);
+        return input ? input.value : fallback;
+    }
+
+    function collectSettingsFromPanel() {
+        return normalizeSettings({
+            poolRatios: {
+                common: getNumberInputValue('commonRatio', PARTY_DEFAULT_SETTINGS.poolRatios.common),
+                uncommon: getNumberInputValue('uncommonRatio', PARTY_DEFAULT_SETTINGS.poolRatios.uncommon)
+            },
+            draftOptionCount: getNumberInputValue('draftOptionCount', PARTY_DEFAULT_SETTINGS.draftOptionCount),
+            drinkValues: {
+                ownedCard: getNumberInputValue('ownedCardDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.ownedCard),
+                holo: getNumberInputValue('holoDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.holo),
+                reverseHolo: getNumberInputValue('reverseHoloDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.reverseHolo),
+                doubleRare: getNumberInputValue('doubleRareDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.doubleRare),
+                ultraRare: getNumberInputValue('ultraRareDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.ultraRare),
+                illustrationRare: getNumberInputValue('illustrationRareDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.illustrationRare),
+                specialIllustrationRare: getNumberInputValue('specialIllustrationRareDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.specialIllustrationRare),
+                hyperRare: getNumberInputValue('hyperRareDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.hyperRare),
+                fallbackHit: getNumberInputValue('fallbackHitDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.fallbackHit)
+            }
+        });
     }
 
     function renderDraft() {
@@ -614,6 +773,7 @@ function createPartyMode() {
                 </div>
             </div>
             ${renderPartyRoster()}
+            ${renderActivePartySettings()}
             ${renderPlayerCollections()}
             ${renderLastResult()}
         `;
@@ -646,14 +806,24 @@ function createPartyMode() {
         panel.querySelector('#party-start')?.addEventListener('click', () => {
             const players = [...panel.querySelectorAll('.party-user-list input:checked')].map(input => input.value);
             const mode = panel.querySelector('input[name="party-mode"]:checked')?.value || 'draft';
+            const settings = collectSettingsFromPanel();
             if (players.length < 2) {
                 alert('Selectionne au moins 2 joueurs.');
                 return;
             }
-            startParty(players, mode);
+            startParty(players, mode, settings);
         });
         panel.querySelectorAll('.party-draft-card').forEach(button => {
             button.addEventListener('click', () => pickDraftCard(button.dataset.cardKey));
+        });
+        panel.querySelector('#party-save-settings')?.addEventListener('click', () => {
+            if (!state) {
+                return;
+            }
+
+            state.settings = collectSettingsFromPanel();
+            savePartyState();
+            render();
         });
         panel.querySelector('#party-open-booster')?.addEventListener('click', () => {
             showBoosterView();

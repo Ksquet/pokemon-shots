@@ -291,6 +291,7 @@ class PokemonShotsApp {
         
         // Activer le bouton d'ouverture
         this.updateAccountDependentUi();
+        window.accounts?.refreshCollection?.();
     }
 
     /**
@@ -382,7 +383,10 @@ class PokemonShotsApp {
         const booster = this.boosterOpener.generateBooster();
         this.currentBoosterData = booster;
         this.currentBoosterPartyScored = false;
-        window.accounts?.recordBooster(booster);
+        const collectionOwner = window.partyMode?.isActive()
+            ? window.partyMode.getCurrentOpener?.()?.username
+            : window.accounts?.getCurrentUser?.()?.username;
+        window.accounts?.recordBooster(booster, collectionOwner);
         
         // Vider le conteneur de cartes
         this.elements.cardsContainer.innerHTML = '';
