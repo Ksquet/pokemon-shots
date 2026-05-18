@@ -1,34 +1,35 @@
 /**
- * Solution complète pour le problème des Double Rare
- * À intégrer dans le fichier booster.js
+ * Générateur de boosters Pokémon 151 basé sur la répartition décrite pour S/V 151.
  */
 
 class BoosterOpener {
     constructor(setData) {
         this.setData = setData;
+        this.debugMode = false;
+        this.log = [];
         this.stats = this.initStats();
         this.rarityMapping = this.analyzeRarities();
         this.availableRarities = this.checkAvailableRarities();
-        
-        // Journalisation pour débogage
-        this.debugMode = true;
-        this.log = [];
     }
 
     /**
-     * Initialise les statistiques
-     * @returns {Object} Statistiques vides
+     * Initialise les statistiques.
+     * @returns {Object} Statistiques vides.
      */
     initStats() {
         return {
-            opened: 0,        // Nombre total de boosters ouverts
-            doubleRare: 0     // Nombre de doubles rares obtenues
+            opened: 0,
+            doubleRare: 0,
+            ultraRare: 0,
+            illustrationRare: 0,
+            specialIllustrationRare: 0,
+            hyperRare: 0
         };
     }
 
     /**
-     * Ajoute une entrée au journal de débogage
-     * @param {string} message - Message à journaliser
+     * Ajoute une entrée au journal de débogage.
+     * @param {string} message - Message à journaliser.
      */
     addLog(message) {
         if (this.debugMode) {
@@ -41,76 +42,98 @@ class BoosterOpener {
     }
 
     /**
-     * Analyse les raretés disponibles dans les données
-     * @returns {Object} Mapping des raretés
+     * Normalise une chaîne pour comparer les raretés françaises et anglaises.
+     * @param {string} value - Valeur à normaliser.
+     * @returns {string} Valeur normalisée.
+     */
+    normalizeText(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[\s_-]+/g, ' ')
+            .trim();
+    }
+
+    /**
+     * Convertit la rareté fournie par les données en catégorie de tirage.
+     * L'ordre est volontairement du plus spécifique au plus générique pour éviter
+     * que "Ultra Rare", "Double Rare" ou "Hyper Rare" soient classées en simple "Rare".
+     * @param {string} rarity - Rareté brute de la carte.
+     * @returns {string} Catégorie de tirage.
+     */
+    classifyRarity(rarity) {
+        const normalized = this.normalizeText(rarity);
+
+        if (/peu commun|uncommon/.test(normalized)) {
+            return 'uncommon';
+        }
+
+        if (/commun|common/.test(normalized)) {
+            return 'common';
+        }
+
+        if (/double rare|rare double|double/.test(normalized)) {
+            return 'doubleRare';
+        }
+
+        if (/special illustration rare|illustration speciale|speciale illustration|sir/.test(normalized)) {
+            return 'specialIllustrationRare';
+        }
+
+        if (/illustration rare|rare illustration|ir/.test(normalized)) {
+            return 'illustrationRare';
+        }
+
+        if (/hyper rare|rare hyper|hyper|secret rare|rare secrete|secrete|secret/.test(normalized)) {
+            return 'hyperRare';
+        }
+
+        if (/ultra rare|rare ultra|ultra/.test(normalized)) {
+            return 'ultraRare';
+        }
+
+        if (/dresseur|trainer/.test(normalized)) {
+            return 'trainer';
+        }
+
+        if (/energie|energy/.test(normalized)) {
+            return 'energy';
+        }
+
+        if (/rare/.test(normalized)) {
+            return 'rare';
+        }
+
+        return 'unknown';
+    }
+
+    /**
+     * Analyse les raretés disponibles dans les données.
+     * @returns {Object} Mapping des raretés brutes vers les catégories de tirage.
      */
     analyzeRarities() {
         const rarities = {};
         const rarityMap = {};
-        
-        // Compter les cartes par rareté
+
         this.setData.forEach(card => {
             const rarity = card.rarity || 'unknown';
-            if (!rarities[rarity]) {
-                rarities[rarity] = 0;
-            }
-            rarities[rarity]++;
+            rarities[rarity] = (rarities[rarity] || 0) + 1;
         });
-        
-        // Analyser les noms de rareté
+
         for (const rarity in rarities) {
-            // Déterminer la catégorie de base
-            if (rarity.match(/commun|common/i)) {
-                rarityMap[rarity] = 'common';
-            } else if (rarity.match(/peu.*commun|uncommon/i)) {
-                rarityMap[rarity] = 'uncommon';
-            } else if (rarity.match(/rare(?!.*double|.*brillant)/i)) {
-                rarityMap[rarity] = 'rare';
-            } else if (rarity.match(/double.*rare|rare.*brillan/i)) {
-                rarityMap[rarity] = 'doubleRare';
-            } else if (rarity.match(/ultra.*rare|rare.*holo.*v|illustration.*rare/i)) {
-                rarityMap[rarity] = 'ultraRare';
-            } else if (rarity.match(/secret|hyper|arc.*en.*ciel|illustration.*speciale/i)) {
-                rarityMap[rarity] = 'secretRare';
-            } else if (rarity.match(/dresseur|trainer/i)) {
-                rarityMap[rarity] = 'trainer';
-            } else if (rarity.match(/energie|energy/i)) {
-                rarityMap[rarity] = 'energy';
-            } else {
-                rarityMap[rarity] = 'unknown';
-            }
+            rarityMap[rarity] = this.classifyRarity(rarity);
         }
-        
-        // Analyser chaque carte pour les cas particuliers
-        this.setData.forEach(card => {
-            // Si une carte a "-ex" dans son ID ou son nom, elle est probablement Double Rare
-            if ((card.id && card.id.toLowerCase().includes('-ex')) || 
-                (card.name && card.name.toLowerCase().endsWith(' ex'))) {
-                
-                // Capturer la rareté originale avant de l'écraser
-                const originalRarity = card.rarity;
-                const mappedRarity = rarityMap[originalRarity] || 'unknown';
-                
-                // Si elle n'est pas déjà identifiée comme doubleRare, la marquer
-                if (mappedRarity !== 'doubleRare') {
-                    this.addLog(`Carte ${card.name} (${card.id}) avec rareté ${originalRarity} classée comme doubleRare car son nom/ID contient 'ex'`);
-                    rarityMap[originalRarity] = 'doubleRare';
-                }
-            }
-        });
-        
-        // Journaliser pour débogage
-        if (this.debugMode) {
-            console.log('Raretés détectées:', rarities);
-            console.log('Mapping des raretés:', rarityMap);
-        }
-        
+
+        this.addLog(`Raretés détectées: ${JSON.stringify(rarities)}`);
+        this.addLog(`Mapping des raretés: ${JSON.stringify(rarityMap)}`);
+
         return rarityMap;
     }
 
     /**
-     * Vérifie quelles raretés sont disponibles après mapping
-     * @returns {Object} Disponibilité des raretés
+     * Vérifie quelles raretés sont disponibles après mapping.
+     * @returns {Object} Disponibilité des raretés.
      */
     checkAvailableRarities() {
         const available = {
@@ -119,69 +142,81 @@ class BoosterOpener {
             rare: false,
             doubleRare: false,
             ultraRare: false,
-            secretRare: false,
+            illustrationRare: false,
+            specialIllustrationRare: false,
+            hyperRare: false,
             trainer: false,
             energy: false
         };
-        
-        // Vérifier chaque carte
+
         this.setData.forEach(card => {
             const rarity = card.rarity || 'unknown';
             const mappedRarity = this.rarityMapping[rarity] || 'unknown';
-            
+
             if (mappedRarity in available) {
                 available[mappedRarity] = true;
             }
         });
-        
-        // Journaliser pour débogage
-        if (this.debugMode) {
-            console.log('Raretés disponibles après mapping:', available);
-        }
-        
+
+        this.addLog(`Raretés disponibles après mapping: ${JSON.stringify(available)}`);
+
         return available;
     }
-    
+
     /**
-     * Obtient une carte de type spécifique selon le mapping de raretés
-     * @param {string} rarityType - Type de rareté mappée
-     * @returns {Object} Carte aléatoire du type demandé
+     * Obtient une carte de type spécifique selon le mapping de raretés.
+     * @param {string} rarityType - Type de rareté mappée.
+     * @returns {Object} Carte aléatoire du type demandé.
      */
     getCardByMappedRarity(rarityType) {
-        // Trouver toutes les raretés d'origine qui correspondent au type mappé
-        const originalRarities = Object.entries(this.rarityMapping)
-            .filter(([originalRarity, mappedRarity]) => mappedRarity === rarityType)
-            .map(([originalRarity]) => originalRarity);
-        
-        if (originalRarities.length === 0) {
-            this.addLog(`Aucune rareté originale trouvée pour le type "${rarityType}"`);
-            return this.createGenericCard(rarityType);
-        }
-        
-        // Filtrer les cartes par ces raretés d'origine
-        const eligibleCards = this.setData.filter(card => 
-            originalRarities.includes(card.rarity)
-        );
-        
+        const eligibleCards = this.getCardsByMappedRarity(rarityType);
+
         if (eligibleCards.length === 0) {
-            this.addLog(`Aucune carte trouvée pour le type "${rarityType}" (raretés: ${originalRarities.join(', ')})`);
+            this.addLog(`Aucune carte trouvée pour le type "${rarityType}"`);
             return this.createGenericCard(rarityType);
         }
-        
-        // Sélectionner une carte aléatoire
+
         const randomIndex = Math.floor(Math.random() * eligibleCards.length);
         const selectedCard = eligibleCards[randomIndex];
-        
+
         this.addLog(`Carte sélectionnée: ${selectedCard.name} (${selectedCard.id}), type: ${rarityType}, rareté originale: ${selectedCard.rarity}`);
-        
-        // Créer une copie profonde pour éviter les modifications croisées
+
         return JSON.parse(JSON.stringify(selectedCard));
     }
 
     /**
-     * Crée une carte générique en cas d'urgence
-     * @param {string} rarityType - Type de rareté
-     * @returns {Object} Carte générique
+     * Liste les cartes correspondant à une catégorie de rareté.
+     * @param {string} rarityType - Catégorie de rareté.
+     * @returns {Array} Cartes éligibles.
+     */
+    getCardsByMappedRarity(rarityType) {
+        const originalRarities = Object.entries(this.rarityMapping)
+            .filter(([, mappedRarity]) => mappedRarity === rarityType)
+            .map(([originalRarity]) => originalRarity);
+
+        return this.setData.filter(card => originalRarities.includes(card.rarity));
+    }
+
+    /**
+     * Obtient une carte aléatoire parmi plusieurs catégories de rareté.
+     * @param {Array<string>} rarityTypes - Catégories acceptées.
+     * @returns {Object} Carte aléatoire.
+     */
+    getCardByAnyMappedRarity(rarityTypes) {
+        const eligibleCards = rarityTypes.flatMap(rarityType => this.getCardsByMappedRarity(rarityType));
+
+        if (eligibleCards.length === 0) {
+            return this.createGenericCard(rarityTypes[0] || 'unknown');
+        }
+
+        const selectedCard = eligibleCards[Math.floor(Math.random() * eligibleCards.length)];
+        return JSON.parse(JSON.stringify(selectedCard));
+    }
+
+    /**
+     * Crée une carte générique en cas d'urgence.
+     * @param {string} rarityType - Type de rareté.
+     * @returns {Object} Carte générique.
      */
     createGenericCard(rarityType) {
         return {
@@ -195,114 +230,150 @@ class BoosterOpener {
     }
 
     /**
-     * Génère un booster aléatoire
-     * @returns {Array} Un tableau d'objets carte
+     * Ajoute les métadonnées visuelles et statistiques d'un slot spécial.
+     * @param {Object} card - Carte à annoter.
+     * @param {string} rarityType - Catégorie spéciale tirée.
+     * @param {string} order - Position de débogage.
+     * @returns {Object} Carte annotée.
      */
-    generateBooster() {
-        this.addLog(`Génération d'un nouveau booster (#${this.stats.opened + 1})`);
-        
-        // Tableau qui contiendra toutes les cartes du booster
-        const booster = [];
-        // Flag pour suivre si ce booster contient une Double Rare
-        let hasDoubleRare = false;
-        
-        // Ajouter les cartes communes (4 cartes)
-        for (let i = 0; i < BoosterOpener.BOOSTER_STRUCTURE.common; i++) {
-            const card = this.getCardByMappedRarity('common');
-            card.DEBUG_ORDER = `C${i+1}`;
-            booster.push(card);
+    markSpecialCard(card, rarityType, order) {
+        card.isFoil = true;
+        card.specialType = rarityType;
+        card.DEBUG_ORDER = order;
+
+        if (rarityType === 'doubleRare') {
+            card.isDoubleRare = true;
         }
-        
-        // Ajouter les cartes peu communes (3 cartes)
-        const uncommonRarity = this.availableRarities.uncommon ? 'uncommon' : 'common';
-        for (let i = 0; i < BoosterOpener.BOOSTER_STRUCTURE.uncommon; i++) {
-            const card = this.getCardByMappedRarity(uncommonRarity);
-            card.DEBUG_ORDER = `U${i+1}`;
-            booster.push(card);
-        }
-        
-        // Ajouter les cartes rares (3 cartes)
-        for (let i = 0; i < BoosterOpener.BOOSTER_STRUCTURE.foil; i++) {
-            // Pour le dernier slot: chance d'obtenir une Double Rare
-            if (i === 2 && this.availableRarities.doubleRare && Math.random() < BoosterOpener.PULL_RATES.doubleRare) {
-                // Sélectionner une carte mappée comme "doubleRare"
-                const card = this.getCardByMappedRarity('doubleRare');
-                card.isFoil = true;
-                card.specialType = 'double';
-                card.isDoubleRare = true;
-                card.DEBUG_ORDER = `DR`;
-                
-                // Ajouter un marqueur visuel pour débogage
-                if (this.debugMode) {
-                    card.name = `[DR] ${card.name}`;
-                }
-                
-                booster.push(card);
-                
-                // Marquer ce booster comme contenant une Double Rare
-                hasDoubleRare = true;
-                this.addLog(`Double Rare générée: ${card.name} (${card.id})`);
-            } else {
-                // Carte rare standard ou commune/peu commune selon disponibilité
-                const rarity = (i === 2 && this.availableRarities.rare) ? 'rare' : 
-                              (this.availableRarities.uncommon ? 'uncommon' : 'common');
-                
-                const card = this.getCardByMappedRarity(rarity);
-                
-                // CORRECTION: Vérifier si malgré tout, on a sélectionné une Double Rare
-                // Cela peut arriver si la rareté originale est doubleRare mais a été mal mappée
-                const originalRarity = card.rarity || 'unknown';
-                if (originalRarity === 'doubleRare' || 
-                    this.rarityMapping[originalRarity] === 'doubleRare' ||
-                    originalRarity.toLowerCase().includes('double') ||
-                    (card.id && card.id.includes('-ex'))) {
-                    
-                    this.addLog(`CORRECTION: Carte ${card.name} (${card.id}) détectée comme Double Rare par sa rareté (${originalRarity}) ou son ID`);
-                    
-                    // Marquer comme Double Rare
-                    card.isFoil = true;
-                    card.specialType = 'double';
-                    card.isDoubleRare = true;
-                    card.DEBUG_ORDER = `DR`;
-                    
-                    // Ajouter un marqueur visuel pour débogage
-                    if (this.debugMode) {
-                        card.name = `[DR] ${card.name}`;
-                    }
-                    
-                    // Marquer ce booster comme contenant une Double Rare
-                    hasDoubleRare = true;
-                } else {
-                    card.isFoil = true;
-                    card.DEBUG_ORDER = `R${i+1}`;
-                }
-                
-                booster.push(card);
-            }
-        }
-        
-        // Incrémenter le compteur de boosters ouverts
-        this.stats.opened++;
-        
-        // Incrémenter le compteur de Double Rare UNIQUEMENT si le booster en contient réellement une
-        if (hasDoubleRare) {
-            this.stats.doubleRare++;
-            this.addLog(`Stats mises à jour - Double Rare: ${this.stats.doubleRare}/${this.stats.opened}`);
-        }
-        
-        // Vérification finale du contenu du booster
-        const doubleRareCards = booster.filter(card => card.isDoubleRare === true);
-        this.addLog(`Vérification finale: ${doubleRareCards.length} Double Rare(s)`);
-        
-        // Ne pas mélanger pour le débogage, ou décommenter pour retrouver le comportement normal
-        // return booster;
-        return this.shuffleArray(booster);
+
+        return card;
     }
 
     /**
-     * Mélange un tableau (algorithme de Fisher-Yates)
-     * @param {Array} array - Le tableau à mélanger
-     * @returns {Array} Le tableau mélangé
+     * Tire une carte spéciale uniquement si la catégorie existe dans les données.
+     * @param {string} rarityType - Catégorie spéciale souhaitée.
+     * @param {string} order - Position de débogage.
+     * @returns {Object|null} Carte spéciale ou null si indisponible.
+     */
+    tryPullSpecialCard(rarityType, order) {
+        if (!this.availableRarities[rarityType]) {
+            this.addLog(`Tirage ${rarityType} ignoré: aucune carte de cette rareté dans les données`);
+            return null;
+        }
+
+        return this.markSpecialCard(this.getCardByMappedRarity(rarityType), rarityType, order);
+    }
+
+    /**
+     * Tire une carte reverse holo simulée parmi les communes, peu communes et rares standards.
+     * @param {string} order - Position de débogage.
+     * @returns {Object} Carte reverse holo simulée.
+     */
+    pullReverseHolo(order) {
+        const rarityTypes = ['common', 'uncommon', 'rare'].filter(rarityType => this.availableRarities[rarityType]);
+        const card = this.getCardByAnyMappedRarity(rarityTypes.length > 0 ? rarityTypes : ['common']);
+        card.isFoil = true;
+        card.isReverseHolo = true;
+        card.DEBUG_ORDER = order;
+        return card;
+    }
+
+    /**
+     * Tire la carte du dernier slot: Rare, Double Rare, Ultra Rare ou Hyper Rare.
+     * @returns {Object} Carte du slot rare.
+     */
+    pullRareSlot() {
+        const roll = Math.random();
+        const rates = BoosterOpener.PULL_RATES;
+        let accumulatedRate = rates.hyperRare;
+
+        if (roll < accumulatedRate) {
+            const card = this.tryPullSpecialCard('hyperRare', 'HR');
+            if (card) {
+                return card;
+            }
+        }
+
+        accumulatedRate += rates.ultraRare;
+        if (roll < accumulatedRate) {
+            const card = this.tryPullSpecialCard('ultraRare', 'UR');
+            if (card) {
+                return card;
+            }
+        }
+
+        accumulatedRate += rates.doubleRare;
+        if (roll < accumulatedRate) {
+            const card = this.tryPullSpecialCard('doubleRare', 'DR');
+            if (card) {
+                return card;
+            }
+        }
+
+        const card = this.availableRarities.rare
+            ? this.getCardByMappedRarity('rare')
+            : this.getCardByAnyMappedRarity(['common', 'uncommon']);
+        card.isFoil = true;
+        card.DEBUG_ORDER = 'R';
+        return card;
+    }
+
+    /**
+     * Génère un booster aléatoire de 11 cartes jouables (hors carte code), selon la structure 151:
+     * 5 communes, 3 peu communes, 2 reverse holo et 1 rare ou mieux.
+     * @returns {Array} Un tableau d'objets carte.
+     */
+    generateBooster() {
+        this.addLog(`Génération d'un nouveau booster (#${this.stats.opened + 1})`);
+
+        const booster = [];
+
+        for (let i = 0; i < BoosterOpener.BOOSTER_STRUCTURE.common; i++) {
+            const card = this.getCardByMappedRarity('common');
+            card.DEBUG_ORDER = `C${i + 1}`;
+            booster.push(card);
+        }
+
+        const uncommonRarity = this.availableRarities.uncommon ? 'uncommon' : 'common';
+        for (let i = 0; i < BoosterOpener.BOOSTER_STRUCTURE.uncommon; i++) {
+            const card = this.getCardByMappedRarity(uncommonRarity);
+            card.DEBUG_ORDER = `U${i + 1}`;
+            booster.push(card);
+        }
+
+        const firstReverseSlot = Math.random() < BoosterOpener.PULL_RATES.illustrationRare
+            ? this.tryPullSpecialCard('illustrationRare', 'IR')
+            : null;
+        booster.push(firstReverseSlot || this.pullReverseHolo('RH1'));
+
+        const secondReverseSlot = Math.random() < BoosterOpener.PULL_RATES.specialIllustrationRare
+            ? this.tryPullSpecialCard('specialIllustrationRare', 'SIR')
+            : null;
+        booster.push(secondReverseSlot || this.pullReverseHolo('RH2'));
+
+        booster.push(this.pullRareSlot());
+
+        this.stats.opened++;
+        this.updateStatsFromBooster(booster);
+
+        return booster;
+    }
+
+    /**
+     * Met à jour les statistiques à partir des cartes spéciales réellement générées.
+     * @param {Array} booster - Booster généré.
+     */
+    updateStatsFromBooster(booster) {
+        booster.forEach(card => {
+            if (card.specialType && card.specialType in this.stats) {
+                this.stats[card.specialType]++;
+            }
+        });
+    }
+
+    /**
+     * Mélange un tableau (algorithme de Fisher-Yates).
+     * @param {Array} array - Le tableau à mélanger.
+     * @returns {Array} Le tableau mélangé.
      */
     shuffleArray(array) {
         const newArray = [...array];
@@ -314,7 +385,7 @@ class BoosterOpener {
     }
 
     /**
-     * Réinitialise les statistiques
+     * Réinitialise les statistiques.
      */
     resetStats() {
         this.stats = this.initStats();
@@ -322,80 +393,71 @@ class BoosterOpener {
     }
 
     /**
-     * Obtient les statistiques actuelles
-     * @returns {Object} Les statistiques
+     * Obtient les statistiques actuelles.
+     * @returns {Object} Les statistiques.
      */
     getStats() {
         return { ...this.stats };
     }
-    
+
     /**
-     * Vérifie si les statistiques correspondent aux taux de pull attendus
-     * @returns {Object} Statistiques comparées aux taux théoriques
+     * Vérifie si les statistiques correspondent aux taux de pull attendus.
+     * @returns {Object} Statistiques comparées aux taux théoriques.
      */
     checkPullRates() {
-        if (this.stats.opened === 0) {
-            return { 
-                message: "Pas de boosters ouverts",
-                totalOpened: 0,
-                comparison: {
-                    doubleRare: {
-                        expected: BoosterOpener.PULL_RATES.doubleRare,
-                        actual: 0,
-                        expectedText: `1 sur ${Math.round(1 / BoosterOpener.PULL_RATES.doubleRare)}`,
-                        actualText: "N/A",
-                        difference: 0
-                    }
-                }
-            };
-        }
-        
-        const actual = {
-            doubleRare: this.stats.doubleRare / this.stats.opened
-        };
-        
-        const expected = {
-            doubleRare: BoosterOpener.PULL_RATES.doubleRare
-        };
-        
         const comparison = {};
-        for (const key in expected) {
+
+        for (const [key, expectedRate] of Object.entries(BoosterOpener.PULL_RATES)) {
+            const actualRate = this.stats.opened > 0 ? (this.stats[key] || 0) / this.stats.opened : 0;
             comparison[key] = {
-                expected: expected[key],
-                actual: actual[key] || 0,
-                expectedText: `1 sur ${Math.round(1 / expected[key])}`,
-                actualText: actual[key] ? `1 sur ${Math.round(1 / actual[key])}` : "N/A",
-                difference: actual[key] ? (actual[key] - expected[key]) / expected[key] * 100 : 0
+                expected: expectedRate,
+                actual: actualRate,
+                expectedText: `1 sur ${Math.round(1 / expectedRate)}`,
+                actualText: actualRate > 0 ? `1 sur ${Math.round(1 / actualRate)}` : 'N/A',
+                difference: actualRate > 0 ? (actualRate - expectedRate) / expectedRate * 100 : 0
             };
         }
-        
+
         return {
             totalOpened: this.stats.opened,
             comparison
         };
     }
-    
+
     /**
-     * Exporte le journal de débogage
-     * @returns {string} Journal formaté
+     * Exporte le journal de débogage.
+     * @returns {string} Journal formaté.
      */
     exportLog() {
-        return this.log.map(entry => 
+        return this.log.map(entry =>
             `[${entry.time.toLocaleTimeString()}] ${entry.message}`
         ).join('\n');
     }
+
+    /**
+     * Retourne le journal brut pour les outils de débogage existants.
+     * @returns {Array} Journal brut.
+     */
+    getDebugLog() {
+        return [...this.log];
+    }
 }
 
-// Structure fixe des boosters
+// Structure fixe des boosters 151 hors carte code.
 BoosterOpener.BOOSTER_STRUCTURE = {
-    common: 4,    // 4 cartes communes
-    uncommon: 3,  // 3 cartes peu communes
-    foil: 3       // 3 cartes brillantes (dont au moins une rare ou plus)
+    common: 5,
+    uncommon: 3,
+    reverseHolo: 2,
+    rare: 1
 };
 
-// Taux de pull exacts pour chaque type de carte spéciale
+// Taux de pull par booster d'après le guide fourni par l'utilisateur.
 BoosterOpener.PULL_RATES = {
-    doubleRare: 0.1328  // 13.28% - 1 sur 8 packs
+    doubleRare: 1 / 8,
+    ultraRare: 1 / 16,
+    illustrationRare: 1 / 12,
+    specialIllustrationRare: 1 / 32,
+    hyperRare: 1 / 51
 };
 
 // Exposer la classe pour une utilisation sans serveur HTTP (file://) et avec des scripts classiques.

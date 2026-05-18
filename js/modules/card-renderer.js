@@ -97,7 +97,7 @@ function renderBoosterCards(booster, onReveal = null) {
     
     // Détection des Double Rare pour débogage
     const doubleRares = booster.filter(card => 
-        card.isDoubleRare === true || card.specialType === 'double'
+        card.isDoubleRare === true || card.specialType === 'doubleRare' || card.specialType === 'double'
     );
     console.log('[CardRenderer] Le booster contient', doubleRares.length, 'Double Rare(s)');
     
@@ -122,12 +122,16 @@ function renderBoosterCards(booster, onReveal = null) {
         // Ajouter la classe de rareté pour les animations
         if (card.rarity === 'rare') {
             cardElement.classList.add('rare');
-        } else if (['ultraRare', 'secretRare'].includes(card.rarity)) {
+        } else if (['ultraRare', 'secretRare'].includes(card.rarity) || card.specialType) {
             cardElement.classList.add('ultra-rare');
         }
         
-        // Classe spécifique pour les Double Rare
-        if (card.specialType === 'double' || card.isDoubleRare) {
+        // Classes spécifiques pour les cartes spéciales
+        if (card.specialType) {
+            cardElement.classList.add(card.specialType.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase());
+        }
+
+        if (card.specialType === 'doubleRare' || card.specialType === 'double' || card.isDoubleRare) {
             cardElement.classList.add('double-rare');
         }
         
@@ -145,11 +149,17 @@ function renderBoosterCards(booster, onReveal = null) {
         // Ajouter un délai pour l'animation d'entrée
         cardElement.style.animationDelay = `${index * 0.1}s`;
         
-        // Si c'est une Double Rare, ajouter un indicateur visuel
-        if (card.specialType === 'double' || card.isDoubleRare) {
+        // Si c'est une carte spéciale, ajouter un indicateur visuel
+        if (card.specialType || card.isDoubleRare) {
             const indicator = document.createElement('div');
             indicator.className = 'debug-indicator';
-            indicator.innerHTML = 'DR';
+            indicator.innerHTML = {
+                doubleRare: 'DR',
+                ultraRare: 'UR',
+                illustrationRare: 'IR',
+                specialIllustrationRare: 'SIR',
+                hyperRare: 'HR'
+            }[card.specialType] || 'DR';
             indicator.style.position = 'absolute';
             indicator.style.top = '0';
             indicator.style.left = '0';
