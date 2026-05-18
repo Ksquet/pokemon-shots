@@ -224,6 +224,106 @@ function createAccountModule() {
         return db.collections[username];
     }
 
+    function addCardsToCollectionInDb(db, usernameInput, cards, obtainedAt = new Date().toISOString()) {
+        const username = normalizeUsername(usernameInput);
+
+        if (!username || !Array.isArray(cards) || !cards.length) {
+            return;
+        }
+
+        db.collections ||= {};
+        db.collections[username] ||= {};
+
+        cards.forEach(card => {
+            const key = getCardKey(card);
+
+            if (!key) {
+                return;
+            }
+
+            const previous = db.collections[username][key] || {
+                ...getCardLite(card),
+                count: 0,
+                firstObtainedAt: obtainedAt
+            };
+
+            db.collections[username][key] = {
+                ...previous,
+                ...getCardLite(card),
+                count: (previous.count || 0) + 1,
+                lastObtainedAt: obtainedAt
+            };
+        });
+    }
+
+    function rebuildCollectionsFromBoosters(db) {
+        db.collections = {};
+        [...db.boosters]
+            .reverse()
+            .forEach(entry => addCardsToCollectionInDb(db, entry.username, entry.cards, entry.openedAt));
+    }
+
+    function parseDateBoundary(value, endOfDay = false) {
+        if (!value) {
+            return null;
+        }
+
+        const date = new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}`);
+        return Number.isNaN(date.getTime()) ? null : date.getTime();
+    }
+
+    function getCollectionResetMatches(db, filters = {}) {
+        const usernames = new Set((filters.usernames || []).map(normalizeUsername).filter(Boolean));
+        const startsAt = parseDateBoundary(filters.startDate);
+        const endsAt = parseDateBoundary(filters.endDate, true);
+
+        return db.boosters.filter(entry => {
+            if (usernames.size && !usernames.has(normalizeUsername(entry.username))) {
+                return false;
+            }
+
+            const openedAt = new Date(entry.openedAt).getTime();
+
+            if (!Number.isFinite(openedAt)) {
+                return !startsAt && !endsAt;
+            }
+
+            if (startsAt && openedAt < startsAt) {
+                return false;
+            }
+
+            if (endsAt && openedAt > endsAt) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    function resetCollections(filters = {}) {
+        const db = loadAccountDb();
+        const matches = getCollectionResetMatches(db, filters);
+        const idsToRemove = new Set(matches.map(entry => entry.id));
+
+        if (!idsToRemove.size) {
+            return {
+                removedBoosters: 0,
+                remainingBoosters: db.boosters.length
+            };
+        }
+
+        db.boosters = db.boosters.filter(entry => !idsToRemove.has(entry.id));
+        rebuildCollectionsFromBoosters(db);
+        saveAccountDb(db);
+        renderAdminPanel();
+        renderCollectionPanel();
+
+        return {
+            removedBoosters: idsToRemove.size,
+            remainingBoosters: db.boosters.length
+        };
+    }
+
     function recordBooster(cards, usernameOverride = null) {
         const username = normalizeUsername(usernameOverride || currentUser?.username);
 
@@ -662,6 +762,102 @@ function createAccountModule() {
         `;
     }
 
+    function getAdminResetUserOptions(db) {
+        const usersWithCollections = new Set([
+            ...Object.keys(db.collections || {}),
+            ...db.boosters.map(entry => normalizeUsername(entry.username))
+        ]);
+
+        return db.users
+            .filter(user => usersWithCollections.has(user.username))
+            .map(user => `
+                <label class="admin-reset-user">
+                    <input type="checkbox" name="reset-users" value="${user.username}">
+                    <span>${user.displayName || user.username}</span>
+                </label>
+            `).join('');
+    }
+
+    function getResetCriteriaLabel(filters) {
+        const usernames = (filters.usernames || []).map(normalizeUsername).filter(Boolean);
+        const userText = usernames.length ? usernames.join(', ') : 'tous les utilisateurs';
+        const dateParts = [];
+
+        if (filters.startDate) {
+            dateParts.push(`depuis ${filters.startDate}`);
+        }
+
+        if (filters.endDate) {
+            dateParts.push(`jusqu'au ${filters.endDate}`);
+        }
+
+        return `${userText}${dateParts.length ? `, ${dateParts.join(' ')}` : ''}`;
+    }
+
+    function bindAdminResetForm(db) {
+        const form = adminPanel?.querySelector('#admin-reset-form');
+
+        if (!form) {
+            return;
+        }
+
+        form.querySelector('#admin-reset-select-all')?.addEventListener('click', () => {
+            form.querySelectorAll('input[name="reset-users"]').forEach(input => {
+                input.checked = true;
+            });
+        });
+
+        form.querySelector('#admin-reset-clear-users')?.addEventListener('click', () => {
+            form.querySelectorAll('input[name="reset-users"]').forEach(input => {
+                input.checked = false;
+            });
+        });
+
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+
+            const filters = {
+                usernames: [...form.querySelectorAll('input[name="reset-users"]:checked')].map(input => input.value),
+                startDate: form.querySelector('#admin-reset-start')?.value || '',
+                endDate: form.querySelector('#admin-reset-end')?.value || ''
+            };
+
+            const startsAt = parseDateBoundary(filters.startDate);
+            const endsAt = parseDateBoundary(filters.endDate, true);
+            const status = form.querySelector('#admin-reset-status');
+
+            if (startsAt && endsAt && startsAt > endsAt) {
+                if (status) {
+                    status.textContent = 'La date de debut doit etre avant la date de fin.';
+                }
+                return;
+            }
+
+            const matches = getCollectionResetMatches(db, filters);
+
+            if (!matches.length) {
+                if (status) {
+                    status.textContent = 'Aucun booster ne correspond a ces filtres.';
+                }
+                return;
+            }
+
+            const criteria = getResetCriteriaLabel(filters);
+            const message = `Reset ${matches.length} booster${matches.length > 1 ? 's' : ''} pour ${criteria} ? Les collections seront reconstruites sans ces boosters.`;
+
+            if (!window.confirm(message)) {
+                return;
+            }
+
+            const result = resetCollections(filters);
+            const nextStatus = adminPanel?.querySelector('#admin-reset-status');
+
+            if (nextStatus) {
+                nextStatus.textContent = `${result.removedBoosters} booster${result.removedBoosters > 1 ? 's retires' : ' retire'} des collections.`;
+            }
+        });
+    }
+
     function renderAdminPanel() {
         ensureAdminPanel();
         if (!adminPanel) {
@@ -695,12 +891,42 @@ function createAccountModule() {
                 <article><span>Boosters</span><strong>${summary.boosters}</strong></article>
                 <article><span>Hits</span><strong>${summary.hits}</strong></article>
             </div>
+            <form class="admin-reset-panel" id="admin-reset-form">
+                <div>
+                    <p>Reset collections</p>
+                    <h3>Retirer des boosters des collections</h3>
+                </div>
+                <div class="admin-reset-users">
+                    <div class="admin-reset-actions">
+                        <span>Utilisateurs</span>
+                        <button type="button" id="admin-reset-select-all">Tous</button>
+                        <button type="button" id="admin-reset-clear-users">Aucun</button>
+                    </div>
+                    <div class="admin-reset-user-grid">
+                        ${getAdminResetUserOptions(db) || '<p class="admin-empty">Aucune collection a reset.</p>'}
+                    </div>
+                </div>
+                <div class="admin-reset-dates">
+                    <label>
+                        <span>Depuis</span>
+                        <input type="date" id="admin-reset-start">
+                    </label>
+                    <label>
+                        <span>Jusqu'au</span>
+                        <input type="date" id="admin-reset-end">
+                    </label>
+                    <button class="reset-button" type="submit">Reset les collections ciblees</button>
+                </div>
+                <p class="admin-reset-help">Sans utilisateur coche, le reset vise tout le monde. Sans dates, il vise tout l'historique.</p>
+                <p class="admin-reset-status" id="admin-reset-status" aria-live="polite"></p>
+            </form>
             <div class="admin-history">
                 ${db.boosters.length ? db.boosters.map(renderBoosterEntry).join('') : '<p class="admin-empty">Aucun booster ouvert pour le moment.</p>'}
             </div>
         `;
 
         adminPanel.querySelector('#admin-back-button')?.addEventListener('click', showBoosterView);
+        bindAdminResetForm(db);
     }
 
     function init(options = {}) {
@@ -727,7 +953,8 @@ function createAccountModule() {
         showLogin,
         createOrLogin,
         logout,
-        recordBooster
+        recordBooster,
+        resetCollections
     };
 }
 

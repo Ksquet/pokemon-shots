@@ -1106,6 +1106,98 @@ h2 {
     line-height: 1;
 }
 
+.admin-reset-panel {
+    display: grid;
+    gap: 0.85rem;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    padding: 1rem;
+}
+
+.admin-reset-panel p,
+.admin-reset-actions span,
+.admin-reset-panel label span {
+    color: #666;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.admin-reset-panel > div:first-child p {
+    margin: 0 0 0.2rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.admin-reset-panel h3 {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.admin-reset-actions,
+.admin-reset-dates {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.6rem;
+}
+
+.admin-reset-actions button {
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 999px;
+    background: #f6f7fb;
+    color: var(--text-color);
+    cursor: pointer;
+    font-weight: 800;
+    padding: 0.45rem 0.7rem;
+}
+
+.admin-reset-user-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.55rem;
+}
+
+.admin-reset-user {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 6px;
+    background: #f6f7fb;
+    padding: 0.55rem 0.65rem;
+}
+
+.admin-reset-user input {
+    flex: 0 0 auto;
+}
+
+.admin-reset-dates label {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.admin-reset-dates input {
+    min-height: 2.35rem;
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    border-radius: 6px;
+    padding: 0.45rem 0.55rem;
+}
+
+.admin-reset-dates .reset-button {
+    margin: 0;
+}
+
+.admin-reset-help,
+.admin-reset-status {
+    margin: 0;
+}
+
+.admin-reset-status {
+    min-height: 1rem;
+    color: var(--primary-color);
+}
+
 .admin-history {
     display: grid;
     gap: 0.75rem;
