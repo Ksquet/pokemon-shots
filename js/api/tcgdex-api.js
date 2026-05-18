@@ -26,7 +26,7 @@ const RARITY_MAP = {
     'Hyper rare': 'secretRare',
     'Secret Rare': 'secretRare',
     'Illustration rare': 'illustrationRare',  // Nouvelle catégorie
-    'Illustration spéciale rare': 'specialIllRare', // Nouvelle catégorie
+    'Illustration spéciale rare': 'specialIllustrationRare', // Nouvelle catégorie
     'Double rare': 'doubleRare'  // Nouvelle catégorie
 };
 
@@ -76,24 +76,24 @@ function convertCardData(cardData) {
     console.log(`Conversion: ${cardData.name} (${cardData.localId}), Rareté: ${cardData.rarity}`);
     
     if (originalRarity === 'Illustration rare') {
-        specialType = 'illustration';
+        specialType = 'illustrationRare';
         console.log(`${cardData.name} est une Illustration Rare`);
     } 
     else if (originalRarity === 'Illustration spéciale rare') {
-        specialType = 'specialIll';
+        specialType = 'specialIllustrationRare';
         console.log(`${cardData.name} est une Special Illustration Rare`);
     }
     else if (originalRarity === 'Hyper rare' || originalRarity === 'Rare Secrète' || 
              originalRarity === 'Secret Rare' || originalRarity === 'Arc-en-ciel Rare') {
-        specialType = 'hyper';
+        specialType = 'hyperRare';
         console.log(`${cardData.name} est une Hyper Rare`);
     }
     else if (originalRarity === 'Double rare') {
-        specialType = 'double';
+        specialType = 'doubleRare';
         console.log(`${cardData.name} est une Double Rare`);
     }
     else if (originalRarity === 'Ultra Rare') {
-        specialType = 'standard';
+        specialType = 'ultraRare';
         console.log(`${cardData.name} est une Ultra Rare standard`);
     }
     

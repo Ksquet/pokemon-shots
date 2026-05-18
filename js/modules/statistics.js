@@ -1,24 +1,47 @@
 /**
- * Module de gestion des statistiques (version simplifiée)
- * Focus uniquement sur les cartes Double Rare
+ * Module de gestion des statistiques de pull.
  */
+
+
+const STAT_LABELS = {
+    doubleRare: 'Double Rare',
+    ultraRare: 'Ultra Rare',
+    illustrationRare: 'Illustration Rare',
+    specialIllustrationRare: 'Special Illustration Rare',
+    hyperRare: 'Hyper Rare'
+};
+
+function toKebabCase(value) {
+    return value.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+}
+
+function formatRate(count, opened) {
+    return opened > 0 ? `${(count / opened * 100).toFixed(2)}%` : '0%';
+}
+
+function formatOneInX(count, opened) {
+    return opened > 0 && count > 0 ? Math.round(opened / count) : 'N/A';
+}
+
+function formatStatRows() {
+    return Object.entries(STAT_LABELS).map(([key, label]) => {
+        const id = toKebabCase(key);
+        return `<p>${label}: <span id="${id}-count">0</span> — <span id="${id}-rate">0%</span> (1 sur <span id="${id}-oneinx">N/A</span>)</p>`;
+    }).join('');
+}
 
 /**
  * Met à jour l'affichage des statistiques
  * @param {Object} stats - Statistiques à afficher
  */
 function updateStats(stats) {
-    // Mise à jour des compteurs basiques
     updateElementIfExists('opened-count', stats.opened);
-    updateElementIfExists('double-rare-count', stats.doubleRare);
-    
-    // Calculer le taux de pull pour les Double Rare
-    if (stats.opened > 0) {
-        const pullRate = stats.doubleRare / stats.opened;
-        const oneInX = Math.round(1 / pullRate) || 0;
-        
-        updateElementIfExists('double-rare-rate', (pullRate * 100).toFixed(2) + '%');
-        updateElementIfExists('double-rare-oneinx', oneInX);
+
+    for (const [key, label] of Object.entries(STAT_LABELS)) {
+        const count = stats[key] || 0;
+        updateElementIfExists(`${toKebabCase(key)}-count`, count);
+        updateElementIfExists(`${toKebabCase(key)}-rate`, formatRate(count, stats.opened));
+        updateElementIfExists(`${toKebabCase(key)}-oneinx`, formatOneInX(count, stats.opened));
     }
 }
 
@@ -45,8 +68,7 @@ function updatePullRates(pullRates) {
         tableBody.innerHTML = ''; // Effacer le contenu actuel
         
         for (const [key, data] of Object.entries(pullRates.comparison)) {
-            // Formater le nom de la carte (doubleRare -> Double Rare)
-            const formattedName = key
+            const formattedName = STAT_LABELS[key] || key
                 .replace(/([A-Z])/g, ' $1')
                 .replace(/^./, str => str.toUpperCase());
             
@@ -132,8 +154,7 @@ function simplifyStatsPanel(panel) {
         basicStats.className = 'basic-stats';
         basicStats.innerHTML = `
             <p>Boosters ouverts: <span id="opened-count">0</span></p>
-            <p>Double Rares: <span id="double-rare-count">0</span></p>
-            <p>Taux de pull: <span id="double-rare-rate">0%</span> (1 sur <span id="double-rare-oneinx">0</span>)</p>
+            ${formatStatRows()}
         `;
         
         content.appendChild(basicStats);
@@ -194,8 +215,7 @@ function createStatsPanel() {
         <div class="stats-content">
             <div class="basic-stats">
                 <p>Boosters ouverts: <span id="opened-count">0</span></p>
-                <p>Double Rares: <span id="double-rare-count">0</span></p>
-                <p>Taux de pull: <span id="double-rare-rate">0%</span> (1 sur <span id="double-rare-oneinx">0</span>)</p>
+                ${formatStatRows()}
             </div>
             
             <div id="pull-rates-panel" class="pull-rates-panel">
