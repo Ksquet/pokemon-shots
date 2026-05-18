@@ -21,14 +21,33 @@ const RARITY_MAP = {
     'Rare Holo V': 'ultraRare',
     'Rare Holo VMAX': 'ultraRare',
     'Rare Holo VSTAR': 'ultraRare',
-    'Arc-en-ciel Rare': 'secretRare',
-    'Rare Secrète': 'secretRare',
-    'Hyper rare': 'secretRare',
-    'Secret Rare': 'secretRare',
+    'Arc-en-ciel Rare': 'hyperRare',
+    'Rare Secrète': 'hyperRare',
+    'Hyper rare': 'hyperRare',
+    'Secret Rare': 'hyperRare',
     'Illustration rare': 'illustrationRare',  // Nouvelle catégorie
-    'Illustration spéciale rare': 'specialIllRare', // Nouvelle catégorie
+    'Illustration spéciale rare': 'specialIllustrationRare', // Nouvelle catégorie
     'Double rare': 'doubleRare'  // Nouvelle catégorie
 };
+
+
+function normalizeRarityKey(value) {
+    return String(value || '')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[\s_-]+/g, ' ')
+        .trim();
+}
+
+const NORMALIZED_RARITY_MAP = Object.fromEntries(
+    Object.entries(RARITY_MAP).map(([rarity, mappedRarity]) => [normalizeRarityKey(rarity), mappedRarity])
+);
+
+function mapApiRarity(rarity) {
+    return RARITY_MAP[rarity] || NORMALIZED_RARITY_MAP[normalizeRarityKey(rarity)] || 'common';
+}
 
 /**
  * Vérifie si des données en cache sont valides
@@ -61,41 +80,16 @@ function convertCardData(cardData) {
     // Conserver la rareté originale exacte
     const originalRarity = cardData.rarity;
     
-    // Déterminer la rareté pour l'application
-    let rarity = 'common'; // Valeur par défaut
+    // Déterminer la rareté pour l'application avec une comparaison normalisée.
+    // TCGdex peut renvoyer par exemple "Illustration rare" ou "Illustration Rare".
+    let rarity = mapApiRarity(cardData.rarity);
     
-    if (cardData.rarity) {
-        // Utiliser la correspondance si disponible, sinon valeur par défaut
-        rarity = RARITY_MAP[cardData.rarity] || 'common';
-    }
-    
-    // Déterminer le type spécial en fonction de la rareté d'origine
-    let specialType = null;
+    // Déterminer le type spécial en fonction de la rareté mappée.
+    const specialRarities = ['illustrationRare', 'specialIllustrationRare', 'hyperRare', 'doubleRare', 'ultraRare'];
+    let specialType = specialRarities.includes(rarity) ? rarity : null;
     
     // AJOUT DE LOGS pour voir exactement quelle carte a quelle rareté
-    console.log(`Conversion: ${cardData.name} (${cardData.localId}), Rareté: ${cardData.rarity}`);
-    
-    if (originalRarity === 'Illustration rare') {
-        specialType = 'illustration';
-        console.log(`${cardData.name} est une Illustration Rare`);
-    } 
-    else if (originalRarity === 'Illustration spéciale rare') {
-        specialType = 'specialIll';
-        console.log(`${cardData.name} est une Special Illustration Rare`);
-    }
-    else if (originalRarity === 'Hyper rare' || originalRarity === 'Rare Secrète' || 
-             originalRarity === 'Secret Rare' || originalRarity === 'Arc-en-ciel Rare') {
-        specialType = 'hyper';
-        console.log(`${cardData.name} est une Hyper Rare`);
-    }
-    else if (originalRarity === 'Double rare') {
-        specialType = 'double';
-        console.log(`${cardData.name} est une Double Rare`);
-    }
-    else if (originalRarity === 'Ultra Rare') {
-        specialType = 'standard';
-        console.log(`${cardData.name} est une Ultra Rare standard`);
-    }
+    console.log(`Conversion: ${cardData.name} (${cardData.localId}), Rareté: ${cardData.rarity}, Rareté mappée: ${rarity}`);
     
     // Les types sont déjà en français
     let type = 'Incolore'; // Valeur par défaut
