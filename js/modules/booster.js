@@ -34,7 +34,6 @@ class BoosterOpener {
      */
     addLog(message) {
         if (this.debugMode) {
-            console.log(`[Booster] ${message}`);
             this.log.push({
                 time: new Date(),
                 message

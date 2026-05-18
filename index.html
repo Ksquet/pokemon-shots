@@ -53,61 +53,8 @@
         </section>
     </main>
 
-    <!-- Panneau de statistiques -->
-    <aside class="stats-panel hidden">
-        <div class="stats-header">
-            <h3>Statistiques</h3>
-            <button class="toggle-stats-panel" aria-label="Réduire/Agrandir le panneau de statistiques">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-            </button>
-        </div>
-        
-        <div class="stats-content">
-            <!-- Statistiques de base -->
-            <div class="basic-stats">
-                <p>Boosters ouverts: <span id="opened-count">0</span></p>
-                <p>Rares standard: <span id="rare-count">0</span></p>
-                <p>Ultra-rares: <span id="ultra-rare-count">0</span></p>
-            </div>
-            
-            <!-- Statistiques détaillées par rareté -->
-            <div id="detailed-stats" class="detailed-stats">
-                <h4>Raretés détaillées:</h4>
-                <p>Double Rares: <span id="double-rare-count">0</span></p>
-                <p>Ultra Rares standard: <span id="standard-ultra-count">0</span></p>
-                <p>Illustration Rares: <span id="ill-rare-count">0</span></p>
-                <p>Special Illustration: <span id="special-ill-count">0</span></p>
-                <p>Hyper Rares: <span id="hyper-rare-count">0</span></p>
-                <p>Énergies brillantes: <span id="foil-energy-count">0</span></p>
-            </div>
-            
-            <!-- Comparaison des taux de pull -->
-            <div id="pull-rates-panel" class="pull-rates-panel">
-                <h4>Comparaison des taux de pull</h4>
-                <p>Boosters ouverts: <span id="total-boosters-opened">0</span></p>
-                <table class="pull-rates-table">
-                    <thead>
-                        <tr>
-                            <th>Type de carte</th>
-                            <th>Taux théorique</th>
-                            <th>Théorique (1 sur X)</th>
-                            <th>Taux réel</th>
-                            <th>Réel (1 sur X)</th>
-                            <th>Différence</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pull-rates-table-body">
-                        <!-- Contenu généré dynamiquement -->
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Bouton pour réinitialiser les statistiques -->
-            <button id="reset-stats" class="reset-button">Réinitialiser les statistiques</button>
-        </div>
-    </aside>
+    <!-- Panneau rendu par js/modules/statistics.js -->
+    <aside class="stats-panel hidden"></aside>
 
     <footer>
         <p>Pokemon Shots © 2025 - Simulateur non officiel</p>
@@ -121,64 +68,6 @@
         <p class="loading-progress">0%</p>
     </div>
     
-    <!-- Styles pour l'indicateur de chargement -->
-    <style>
-    .loading-indicator {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background-color: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 15px;
-        border-radius: 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        z-index: 1000;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        transition: opacity 0.3s ease-in-out;
-    }
-
-    .loading-spinner {
-        border: 4px solid rgba(255, 255, 255, 0.3);
-        border-top: 4px solid var(--primary-color);
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        animation: spin 2s linear infinite;
-        margin-bottom: 10px;
-    }
-
-    .loading-progress {
-        margin-top: 5px;
-        font-weight: bold;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-
-    .loading-indicator.done {
-        animation: fadeout 1.5s forwards;
-    }
-
-    @keyframes fadeout {
-        0% { opacity: 1; }
-        90% { opacity: 1; }
-        100% { opacity: 0; visibility: hidden; }
-    }
-
-    @media (max-width: 768px) {
-        .loading-indicator {
-            bottom: 10px;
-            right: 10px;
-            left: 10px;
-            font-size: 14px;
-        }
-    }
-    </style>
-
     <!-- Données statiques (utilisées comme solution de secours) -->
     <script src="js/data/pokemon151.js"></script>
     

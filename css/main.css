@@ -1826,6 +1826,62 @@ nav li button:hover {
     line-height: 1;
 }
 
+/* Loading indicator */
+.loading-indicator {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 10px;
+    background-color: rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 15px;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.loading-spinner {
+    width: 30px;
+    height: 30px;
+    margin-bottom: 10px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 2s linear infinite;
+}
+
+.loading-progress {
+    margin-top: 5px;
+    font-weight: bold;
+}
+
+.loading-indicator.done {
+    animation: fadeout 1.5s forwards;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes fadeout {
+    0%,
+    90% {
+        opacity: 1;
+    }
+    100% {
+        visibility: hidden;
+        opacity: 0;
+    }
+}
+
 /* Footer */
 footer {
     background-color: var(--text-color);
@@ -1886,6 +1942,13 @@ footer {
         position: static;
         width: 100%;
         margin-bottom: 1rem;
+    }
+
+    .loading-indicator {
+        right: 10px;
+        bottom: 10px;
+        left: 10px;
+        font-size: 14px;
     }
 
     .stats-grid,

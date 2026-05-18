@@ -92,29 +92,13 @@ function handleImageError(img, card) {
  */
 function renderBoosterCards(booster, onReveal = null) {
     const cardElements = [];
-    
-    console.log('[CardRenderer] Rendu de', booster.length, 'cartes');
-    
-    // Détection des Double Rare pour débogage
-    const doubleRares = booster.filter(card => 
-        card.isDoubleRare === true || card.specialType === 'doubleRare' || card.specialType === 'double'
-    );
-    console.log('[CardRenderer] Le booster contient', doubleRares.length, 'Double Rare(s)');
-    
-    // Afficher les cartes Double Rare
-    if (doubleRares.length > 0) {
-        console.log('[CardRenderer] Double Rare(s) détectée(s):');
-        doubleRares.forEach(card => {
-            console.log(`  - ${card.name} (${card.id}, ${card.DEBUG_ORDER || 'pas d\'ordre'}, specialType: ${card.specialType}, isDoubleRare: ${card.isDoubleRare})`);
-        });
-    }
-    
+
     booster.forEach((card, index) => {
         const cardElement = document.createElement('div');
         cardElement.classList.add('card');
         cardElement.dataset.cardId = card.id;
         
-        // Ajouter des attributs de données pour le débogage
+        // Ces attributs gardent les stats indépendantes de l'objet carte original.
         cardElement.dataset.debug = card.DEBUG_ORDER || '';
         cardElement.dataset.specialType = card.specialType || '';
         cardElement.dataset.isDoubleRare = card.isDoubleRare || false;
@@ -153,9 +137,6 @@ function renderBoosterCards(booster, onReveal = null) {
         // Ajouter un délai pour l'animation d'entrée
         cardElement.style.animationDelay = `${index * 0.1}s`;
         
-        // Si c'est une carte spéciale, ajouter un indicateur visuel
-        // Ajouter un indicateur d'ordre pour le débogage
-        // Ajouter l'événement de clic pour révéler la carte
         cardElement.addEventListener('click', (e) => {
             // Si la carte n'est pas encore révélée, on la révèle
             if (!cardElement.classList.contains('revealed')) {
@@ -171,11 +152,7 @@ function renderBoosterCards(booster, onReveal = null) {
         
         cardElements.push(cardElement);
     });
-    
-    // Vérification finale
-    const doubleRareElements = cardElements.filter(el => el.classList.contains('double-rare')).length;
-    console.log(`[CardRenderer] Éléments DOM avec classe 'double-rare': ${doubleRareElements}`);
-    
+
     return cardElements;
 }
 

@@ -45,5 +45,7 @@ js/modules/booster.js       Génération des boosters et statistiques
 js/modules/card-renderer.js Rendu et révélation des cartes
 js/modules/card-zoom.js     Zoom des cartes
 js/modules/statistics.js    Panneau de statistiques
+js/modules/accounts.js      Comptes locaux, collections et vue admin
+js/modules/party-mode.js    Mode soirée et calcul des gorgées
 js/utils/booster-image.js   Image de booster générée en canvas
 ```

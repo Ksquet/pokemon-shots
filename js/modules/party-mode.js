@@ -4,7 +4,6 @@
 
 const PARTY_STORAGE_KEY = 'pokemonShotsPartyState';
 const PARTY_PICK_SIZE = 6;
-const PARTY_BASE_FOIL_DRINKS = 1;
 const PARTY_DEFAULT_SETTINGS = {
     poolRatios: {
         common: 0.5,
@@ -403,7 +402,7 @@ function createPartyMode() {
         const values = getSettings().drinkValues;
 
         if (card.isReverseHolo) {
-            return PARTY_BASE_FOIL_DRINKS + values.reverseHolo;
+            return values.reverseHolo;
         }
 
         if (card.specialType === 'doubleRare' || card.isDoubleRare) {
@@ -431,7 +430,7 @@ function createPartyMode() {
         }
 
         if (card.isFoil) {
-            return PARTY_BASE_FOIL_DRINKS + values.holo;
+            return values.holo;
         }
 
         return 0;
@@ -445,22 +444,38 @@ function createPartyMode() {
         const opener = state.players[state.openerIndex];
         const distribution = Object.fromEntries(state.players.map(player => [player.username, 0]));
         const events = [];
+        const debugRows = [];
 
         boosterCards.forEach(card => {
             const owner = getOwnerForCard(card);
+            const debugBase = {
+                carte: card.name,
+                slot: card.DEBUG_ORDER || '-',
+                rarete: card.specialType || card.rarity || '-',
+                proprietaire: owner?.username || '-',
+                ouvreur: opener.username
+            };
 
             if (card.isReverseHolo) {
-                const drinks = getHitDrinkValue(card);
-                const target = owner || opener;
-                if (drinks > 0) {
-                    distribution[target.username] += drinks;
+                const ownedDrinks = owner ? getSettings().drinkValues.ownedCard : 0;
+                const reverseBonusDrinks = owner ? getHitDrinkValue(card) : 0;
+                const drinks = ownedDrinks + reverseBonusDrinks;
+
+                if (owner && drinks > 0) {
+                    distribution[owner.username] += drinks;
                     events.push({
                         type: 'reverse-holo',
-                        username: target.username,
+                        username: owner.username,
                         drinks,
                         cardName: card.name
                     });
                 }
+                debugRows.push({
+                    ...debugBase,
+                    raison: owner ? 'Carte possedee + bonus Reverse holo' : 'Reverse holo non possedee',
+                    cible: owner?.username || '-',
+                    gorgees: drinks
+                });
                 return;
             }
 
@@ -475,6 +490,12 @@ function createPartyMode() {
                         cardName: card.name
                     });
                 }
+                debugRows.push({
+                    ...debugBase,
+                    raison: 'Carte possedee',
+                    cible: owner.username,
+                    gorgees: drinks
+                });
             }
 
             const hitDrinks = getHitDrinkValue(card);
@@ -485,6 +506,21 @@ function createPartyMode() {
                     username: opener.username,
                     drinks: hitDrinks,
                     cardName: card.name
+                });
+                debugRows.push({
+                    ...debugBase,
+                    raison: 'Hit / holo',
+                    cible: opener.username,
+                    gorgees: hitDrinks
+                });
+            }
+
+            if (!owner && hitDrinks <= 0) {
+                debugRows.push({
+                    ...debugBase,
+                    raison: 'Aucune gorgee',
+                    cible: '-',
+                    gorgees: 0
                 });
             }
         });
@@ -518,7 +554,18 @@ function createPartyMode() {
         state.openerIndex = (state.openerIndex + 1) % state.players.length;
         savePartyState();
         render();
+        logDrinkCalculation(boosterRecord, debugRows);
         return state.lastResult;
+    }
+
+    function logDrinkCalculation(boosterRecord, debugRows) {
+        console.groupCollapsed(`[Pokemon Shots] Calcul des gorgees - ${boosterRecord.opener}`);
+        console.table(debugRows);
+        console.log('Distribution finale:', boosterRecord.distribution);
+        console.log('Evenements retenus:', boosterRecord.events);
+        console.log('Parametres utilises:', boosterRecord.settings.drinkValues);
+        console.log('Tout le monde boit:', boosterRecord.everyoneDrinks);
+        console.groupEnd();
     }
 
     function getSummary() {
@@ -615,8 +662,8 @@ function createPartyMode() {
                     <section>
                         <h4>Gorgees</h4>
                         ${renderSettingInput('ownedCardDrinks', 'Carte possedee', settings.drinkValues.ownedCard)}
-                        ${renderSettingInput('holoDrinks', 'Bonus Holo standard (+1 base)', settings.drinkValues.holo)}
-                        ${renderSettingInput('reverseHoloDrinks', 'Bonus Reverse holo (+1 base)', settings.drinkValues.reverseHolo)}
+                        ${renderSettingInput('holoDrinks', 'Bonus Holo standard', settings.drinkValues.holo)}
+                        ${renderSettingInput('reverseHoloDrinks', 'Bonus Reverse holo possedee', settings.drinkValues.reverseHolo)}
                         ${renderSettingInput('doubleRareDrinks', 'Double Rare', settings.drinkValues.doubleRare)}
                         ${renderSettingInput('ultraRareDrinks', 'Ultra Rare', settings.drinkValues.ultraRare)}
                         ${renderSettingInput('illustrationRareDrinks', 'Illustration Rare', settings.drinkValues.illustrationRare)}
