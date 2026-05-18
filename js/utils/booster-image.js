@@ -6,7 +6,7 @@
  * Génère une image de booster
  * @returns {string} URL de données de l'image générée
  */
-export function generateBoosterImage() {
+function generateBoosterImage() {
     try {
         // Canvas pour générer le booster
         const canvas = document.createElement('canvas');
@@ -86,3 +86,5 @@ export function generateBoosterImage() {
         return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="250" height="350" viewBox="0 0 250 350"><rect fill="%23ff3e3e" width="250" height="350"/><text fill="white" font-family="Arial" font-size="24" text-anchor="middle" x="125" y="175">Booster 151</text></svg>';
     }
 }
+
+window.generateBoosterImage = generateBoosterImage;
