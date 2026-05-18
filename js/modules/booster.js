@@ -218,6 +218,10 @@ class BoosterOpener {
         return this.setData.filter(card => this.getMappedRarityForCard(card) === rarityType);
     }
 
+    getMappedRarity(card) {
+        return this.getMappedRarityForCard(card);
+    }
+
     /**
      * Obtient une carte aléatoire parmi plusieurs catégories de rareté.
      * @param {Array<string>} rarityTypes - Catégories acceptées.

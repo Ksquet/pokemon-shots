@@ -13,10 +13,13 @@ class PokemonShotsApp {
         this.isInitialized = false;
         this.currentBoosterCards = [];
         this.currentCardIndex = 0;
+        this.currentBoosterData = [];
+        this.currentBoosterPartyScored = false;
         this.openingIntroTimeout = null;
         this.currentBoosterImagesReady = Promise.resolve();
         this.suppressNextOpeningClick = false;
         this.displayedStats = this.initDisplayedStats();
+        this.currentAccountUsername = null;
     }
 
     initDisplayedStats() {
@@ -85,6 +88,16 @@ class PokemonShotsApp {
         // Configurer les événements
         this.setupEventListeners();
 
+        if (window.accounts) {
+            window.accounts.init({
+                onSessionChange: (user) => this.handleAccountSessionChange(user)
+            });
+        }
+
+        if (window.partyMode) {
+            window.partyMode.init({ app: this });
+        }
+
         // Initialiser le panneau de statistiques
         initializeStatsPanel();
         this.refreshDisplayedStats();
@@ -96,6 +109,43 @@ class PokemonShotsApp {
         this.loadCardDataInBackground();
 
         this.isInitialized = true;
+        this.updateAccountDependentUi();
+    }
+
+    updateAccountDependentUi() {
+        if (!this.elements.openButton) {
+            return;
+        }
+
+        this.elements.openButton.disabled = !this.boosterOpener;
+
+        if (this.boosterOpener) {
+            this.elements.openButton.textContent = 'Ouvrir un booster';
+        }
+    }
+
+    handleAccountSessionChange(user) {
+        const nextUsername = user?.username || null;
+
+        if (nextUsername !== this.currentAccountUsername) {
+            this.currentAccountUsername = nextUsername;
+            this.resetOpeningArea();
+            this.resetDisplayedStats();
+
+            if (this.elements.openingArea) {
+                this.elements.openingArea.classList.add('hidden');
+            }
+
+            if (this.elements.boosterSelection) {
+                this.elements.boosterSelection.classList.remove('hidden');
+            }
+
+            if (this.elements.statsPanel && !nextUsername) {
+                this.elements.statsPanel.classList.add('hidden');
+            }
+        }
+
+        this.updateAccountDependentUi();
     }
 
     /**
@@ -210,8 +260,7 @@ class PokemonShotsApp {
         window.boosterOpener = this.boosterOpener; // Pour l'accès global
         
         // Activer le bouton d'ouverture
-        this.elements.openButton.textContent = 'Ouvrir un booster';
-        this.elements.openButton.disabled = false;
+        this.updateAccountDependentUi();
     }
 
     /**
@@ -226,15 +275,14 @@ class PokemonShotsApp {
             
             // Garder le bouton utilisable avec les données statiques pendant le chargement API.
             if (this.elements.openButton) {
-                this.elements.openButton.disabled = false;
-                this.elements.openButton.textContent = 'Ouvrir un booster (données locales)';
+                this.updateAccountDependentUi();
             }
             
             // S'abonner aux mises à jour de progression
             if (window.loadingProgress) {
                 window.loadingProgress.onUpdate((percentage) => {
                     // Mettre à jour le texte du bouton avec la progression
-                    if (this.elements.openButton) {
+                    if (this.elements.openButton && window.accounts?.getCurrentUser()) {
                         this.elements.openButton.textContent = `Ouvrir un booster (sync ${percentage}%)`;
                     }
                 });
@@ -257,8 +305,7 @@ class PokemonShotsApp {
                     
                     // Activer le bouton
                     if (this.elements.openButton) {
-                        this.elements.openButton.disabled = false;
-                        this.elements.openButton.textContent = 'Ouvrir un booster';
+                        this.updateAccountDependentUi();
                     }
                 } else {
                     console.error("Erreur: Données de l'API invalides ou vides");
@@ -287,8 +334,7 @@ class PokemonShotsApp {
         }
 
         if (this.elements.openButton) {
-            this.elements.openButton.disabled = false;
-            this.elements.openButton.textContent = 'Ouvrir un booster';
+            this.updateAccountDependentUi();
         }
     }
 
@@ -304,14 +350,19 @@ class PokemonShotsApp {
         
         // Générer un nouveau booster
         const booster = this.boosterOpener.generateBooster();
+        this.currentBoosterData = booster;
+        this.currentBoosterPartyScored = false;
+        window.accounts?.recordBooster(booster);
         
         // Vider le conteneur de cartes
         this.elements.cardsContainer.innerHTML = '';
+        document.querySelector('.party-inline-result')?.remove();
         this.elements.cardsContainer.classList.remove('recap-grid');
         this.elements.cardsContainer.classList.add('opening-sequence');
         
         // Créer et ajouter les cartes au DOM
         this.currentBoosterCards = renderBoosterCards(booster, null);
+        this.applyPartyOwnershipBadges(booster, this.currentBoosterCards);
         this.currentCardIndex = 0;
         this.currentBoosterImagesReady = this.preloadBoosterImages(this.currentBoosterCards);
         this.displayedStats.opened++;
@@ -337,6 +388,30 @@ class PokemonShotsApp {
     /**
      * Révèle toutes les cartes du booster actuel
      */
+    applyPartyOwnershipBadges(booster, cardElements) {
+        if (!window.partyMode?.isActive()) {
+            return;
+        }
+
+        booster.forEach((card, index) => {
+            const owner = window.partyMode.getCardOwner(card);
+            const cardElement = cardElements[index];
+
+            if (!owner || !cardElement) {
+                return;
+            }
+
+            cardElement.classList.add('owned-party-card');
+            const badge = document.createElement('span');
+            badge.className = 'party-card-owner-badge';
+            badge.textContent = card.isReverseHolo ? `${owner.username} +1` : owner.username;
+            badge.title = card.isReverseHolo
+                ? `${owner.username} possede cette carte: +1 bonus reverse`
+                : `${owner.username} possede cette carte`;
+            cardElement.appendChild(badge);
+        });
+    }
+
     startSequentialOpening() {
         this.clearOpeningIntroTimeout();
 
@@ -450,7 +525,44 @@ class PokemonShotsApp {
             this.elements.cardsContainer.appendChild(cardElement);
         });
 
+        if (window.partyMode?.isActive() && !this.currentBoosterPartyScored) {
+            const partyResult = window.partyMode.scoreBooster(this.currentBoosterData || []);
+            this.currentBoosterPartyScored = true;
+            this.renderPartyResultInSummary(partyResult);
+        }
+
         setupCardZoomEvents();
+    }
+
+    renderPartyResultInSummary(result) {
+        if (!result) {
+            return;
+        }
+
+        const resultElement = document.createElement('section');
+        resultElement.className = 'party-inline-result';
+        resultElement.innerHTML = `
+            <div class="party-inline-header">
+                <div>
+                    <span>Booster ouvert par</span>
+                    <strong>${result.opener}</strong>
+                </div>
+                <div>
+                    <span>Prochain a ouvrir</span>
+                    <strong>${result.nextOpener || '-'}</strong>
+                </div>
+            </div>
+            <h3>Gorgees a distribuer</h3>
+            <div class="party-drink-grid">
+                ${Object.entries(result.distribution).map(([username, drinks]) => `
+                    <article>
+                        <span>${username}</span>
+                        <strong>${drinks}</strong>
+                    </article>
+                `).join('')}
+            </div>
+        `;
+        this.elements.cardsContainer.after(resultElement);
     }
 
     recordDisplayedCardStats(cardElement) {
@@ -526,7 +638,10 @@ class PokemonShotsApp {
         this.clearOpeningIntroTimeout();
         this.currentBoosterCards = [];
         this.currentCardIndex = 0;
+        this.currentBoosterData = [];
+        this.currentBoosterPartyScored = false;
         this.elements.cardsContainer.innerHTML = '';
+        document.querySelector('.party-inline-result')?.remove();
         this.elements.cardsContainer.classList.remove('opening-sequence', 'recap-grid');
     }
 
