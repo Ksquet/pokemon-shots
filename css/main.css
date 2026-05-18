@@ -1781,6 +1781,33 @@ nav li button:hover {
     font-size: 1.55rem;
 }
 
+.party-everyone-drinks {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    color: white;
+    margin: 0.75rem 0;
+    padding: 0.8rem 1rem;
+}
+
+.party-everyone-drinks strong,
+.party-everyone-drinks span {
+    color: inherit;
+}
+
+.party-everyone-drinks strong {
+    font-size: 1.05rem;
+}
+
+.party-everyone-drinks span {
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-align: right;
+}
+
 .party-drink-grid article {
     border-radius: 8px;
     background: #f6f7fb;

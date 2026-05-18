@@ -624,6 +624,12 @@ class PokemonShotsApp {
                 </div>
             </div>
             <h3>Gorgees a distribuer</h3>
+            ${result.everyoneDrinks ? `
+                <div class="party-everyone-drinks">
+                    <strong>Tout le monde boit !</strong>
+                    <span>Une gorgee pour chaque joueur.</span>
+                </div>
+            ` : ''}
             <div class="party-drink-grid">
                 ${Object.entries(result.distribution).map(([username, drinks]) => `
                     <article>

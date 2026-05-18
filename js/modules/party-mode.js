@@ -4,6 +4,7 @@
 
 const PARTY_STORAGE_KEY = 'pokemonShotsPartyState';
 const PARTY_PICK_SIZE = 6;
+const PARTY_BASE_FOIL_DRINKS = 1;
 const PARTY_DEFAULT_SETTINGS = {
     poolRatios: {
         common: 0.5,
@@ -402,7 +403,7 @@ function createPartyMode() {
         const values = getSettings().drinkValues;
 
         if (card.isReverseHolo) {
-            return values.reverseHolo;
+            return PARTY_BASE_FOIL_DRINKS + values.reverseHolo;
         }
 
         if (card.specialType === 'doubleRare' || card.isDoubleRare) {
@@ -430,7 +431,7 @@ function createPartyMode() {
         }
 
         if (card.isFoil) {
-            return values.holo;
+            return PARTY_BASE_FOIL_DRINKS + values.holo;
         }
 
         return 0;
@@ -447,6 +448,22 @@ function createPartyMode() {
 
         boosterCards.forEach(card => {
             const owner = getOwnerForCard(card);
+
+            if (card.isReverseHolo) {
+                const drinks = getHitDrinkValue(card);
+                const target = owner || opener;
+                if (drinks > 0) {
+                    distribution[target.username] += drinks;
+                    events.push({
+                        type: 'reverse-holo',
+                        username: target.username,
+                        drinks,
+                        cardName: card.name
+                    });
+                }
+                return;
+            }
+
             if (owner) {
                 const drinks = getSettings().drinkValues.ownedCard;
                 if (drinks > 0) {
@@ -472,6 +489,8 @@ function createPartyMode() {
             }
         });
 
+        const everyoneDrinks = state.players.length > 0
+            && state.players.every(player => distribution[player.username] === 1);
         const nextOpener = state.players[(state.openerIndex + 1) % state.players.length];
 
         const boosterRecord = {
@@ -479,6 +498,7 @@ function createPartyMode() {
             nextOpener: nextOpener.username,
             distribution,
             events,
+            everyoneDrinks,
             settings: getSettings(),
             cards: boosterCards.map(card => ({
                 ...getCardLite(card),
@@ -595,8 +615,8 @@ function createPartyMode() {
                     <section>
                         <h4>Gorgees</h4>
                         ${renderSettingInput('ownedCardDrinks', 'Carte possedee', settings.drinkValues.ownedCard)}
-                        ${renderSettingInput('holoDrinks', 'Holo standard', settings.drinkValues.holo)}
-                        ${renderSettingInput('reverseHoloDrinks', 'Reverse holo', settings.drinkValues.reverseHolo)}
+                        ${renderSettingInput('holoDrinks', 'Bonus Holo standard (+1 base)', settings.drinkValues.holo)}
+                        ${renderSettingInput('reverseHoloDrinks', 'Bonus Reverse holo (+1 base)', settings.drinkValues.reverseHolo)}
                         ${renderSettingInput('doubleRareDrinks', 'Double Rare', settings.drinkValues.doubleRare)}
                         ${renderSettingInput('ultraRareDrinks', 'Ultra Rare', settings.drinkValues.ultraRare)}
                         ${renderSettingInput('illustrationRareDrinks', 'Illustration Rare', settings.drinkValues.illustrationRare)}
@@ -741,6 +761,12 @@ function createPartyMode() {
         return `
             <section class="party-result">
                 <h3>Recap du dernier booster - ${state.lastResult.opener}</h3>
+                ${state.lastResult.everyoneDrinks ? `
+                    <div class="party-everyone-drinks">
+                        <strong>Tout le monde boit !</strong>
+                        <span>Une gorgee pour chaque joueur.</span>
+                    </div>
+                ` : ''}
                 <div class="party-drink-grid">
                     ${Object.entries(state.lastResult.distribution).map(([username, drinks]) => `
                         <article>
