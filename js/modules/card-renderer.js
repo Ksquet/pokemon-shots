@@ -154,59 +154,7 @@ function renderBoosterCards(booster, onReveal = null) {
         cardElement.style.animationDelay = `${index * 0.1}s`;
         
         // Si c'est une carte spéciale, ajouter un indicateur visuel
-        if (card.specialType || card.isDoubleRare) {
-            const indicator = document.createElement('div');
-            indicator.className = 'debug-indicator';
-            indicator.innerHTML = {
-                doubleRare: 'DR',
-                ultraRare: 'UR',
-                illustrationRare: 'IR',
-                specialIllustrationRare: 'SIR',
-                hyperRare: 'HR'
-            }[card.specialType] || 'DR';
-            indicator.style.position = 'absolute';
-            indicator.style.top = '0';
-            indicator.style.left = '0';
-            indicator.style.background = 'rgba(255, 215, 0, 0.8)';
-            indicator.style.color = 'black';
-            indicator.style.padding = '2px 5px';
-            indicator.style.fontSize = '12px';
-            indicator.style.fontWeight = 'bold';
-            indicator.style.borderRadius = '0 0 5px 0';
-            cardElement.appendChild(indicator);
-        }
-
-        if (card.isReverseHolo) {
-            const reverseIndicator = document.createElement('div');
-            reverseIndicator.className = 'reverse-holo-indicator';
-            reverseIndicator.innerHTML = 'RH';
-            reverseIndicator.style.position = 'absolute';
-            reverseIndicator.style.top = '0';
-            reverseIndicator.style.right = '0';
-            reverseIndicator.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(70,200,255,0.9), rgba(255,100,220,0.9))';
-            reverseIndicator.style.color = 'black';
-            reverseIndicator.style.padding = '2px 5px';
-            reverseIndicator.style.fontSize = '12px';
-            reverseIndicator.style.fontWeight = 'bold';
-            reverseIndicator.style.borderRadius = '0 0 0 5px';
-            cardElement.appendChild(reverseIndicator);
-        }
-        
         // Ajouter un indicateur d'ordre pour le débogage
-        if (card.DEBUG_ORDER) {
-            const orderIndicator = document.createElement('div');
-            orderIndicator.className = 'debug-order';
-            orderIndicator.innerHTML = card.DEBUG_ORDER;
-            orderIndicator.style.position = 'absolute';
-            orderIndicator.style.bottom = '0';
-            orderIndicator.style.right = '0';
-            orderIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
-            orderIndicator.style.color = 'white';
-            orderIndicator.style.padding = '2px 5px';
-            orderIndicator.style.fontSize = '10px';
-            cardElement.appendChild(orderIndicator);
-        }
-        
         // Ajouter l'événement de clic pour révéler la carte
         cardElement.addEventListener('click', (e) => {
             // Si la carte n'est pas encore révélée, on la révèle
@@ -266,6 +214,25 @@ function revealAllCards(cards, callback) {
  * Génère une image pour le dos des cartes
  */
 function generateCardBack() {
+    const cardBackUrl = new URL('assets/images/cardback.jpg', window.location.href).href;
+
+    try {
+        const img = new Image();
+        img.onload = () => {
+            document.documentElement.style.setProperty('--card-back-image', `url("${cardBackUrl}")`);
+        };
+        img.onerror = () => {
+            generateFallbackCardBack();
+        };
+        img.src = cardBackUrl;
+        return;
+    } catch (error) {
+        generateFallbackCardBack();
+        return;
+    }
+}
+
+function generateFallbackCardBack() {
     try {
         const canvas = document.createElement('canvas');
         canvas.width = 165;

@@ -2,12 +2,11 @@
  * Module de gestion des statistiques de pull.
  */
 
-
 const STAT_LABELS = {
     doubleRare: 'Double Rare',
     ultraRare: 'Ultra Rare',
     illustrationRare: 'Illustration Rare',
-    specialIllustrationRare: 'Special Illustration Rare',
+    specialIllustrationRare: 'Special Illustration',
     hyperRare: 'Hyper Rare'
 };
 
@@ -16,233 +15,167 @@ function toKebabCase(value) {
 }
 
 function formatRate(count, opened) {
-    return opened > 0 ? `${(count / opened * 100).toFixed(2)}%` : '0%';
+    return opened > 0 ? `${(count / opened * 100).toFixed(1)}%` : '0%';
 }
 
 function formatOneInX(count, opened) {
     return opened > 0 && count > 0 ? Math.round(opened / count) : 'N/A';
 }
 
-function formatStatRows() {
-    return Object.entries(STAT_LABELS).map(([key, label]) => {
-        const id = toKebabCase(key);
-        return `<p>${label}: <span id="${id}-count">0</span> — <span id="${id}-rate">0%</span> (1 sur <span id="${id}-oneinx">N/A</span>)</p>`;
-    }).join('');
+function formatPercent(value) {
+    return `${(value * 100).toFixed(1)}%`;
 }
 
-/**
- * Met à jour l'affichage des statistiques
- * @param {Object} stats - Statistiques à afficher
- */
-function updateStats(stats) {
-    updateElementIfExists('opened-count', stats.opened);
-
-    for (const [key, label] of Object.entries(STAT_LABELS)) {
-        const count = stats[key] || 0;
-        updateElementIfExists(`${toKebabCase(key)}-count`, count);
-        updateElementIfExists(`${toKebabCase(key)}-rate`, formatRate(count, stats.opened));
-        updateElementIfExists(`${toKebabCase(key)}-oneinx`, formatOneInX(count, stats.opened));
-    }
-}
-
-/**
- * Met à jour l'élément HTML s'il existe
- * @param {string} id - ID de l'élément HTML
- * @param {number|string} value - Valeur à afficher
- */
 function updateElementIfExists(id, value) {
     const element = document.getElementById(id);
     if (element) {
-        element.textContent = value || 0;
+        element.textContent = value ?? 0;
     }
 }
 
-/**
- * Met à jour l'affichage des taux de pull réels vs théoriques
- * @param {Object} pullRates - Données de taux de pull
- */
+function createStatCardsMarkup() {
+    return Object.entries(STAT_LABELS).map(([key, label]) => {
+        const id = toKebabCase(key);
+        return `
+            <article class="stat-card stat-${id}">
+                <div class="stat-card-label">${label}</div>
+                <div class="stat-card-value" id="${id}-count">0</div>
+                <div class="stat-card-meta">
+                    <span id="${id}-rate">0%</span>
+                    <span>1/<span id="${id}-oneinx">N/A</span></span>
+                </div>
+            </article>
+        `;
+    }).join('');
+}
+
+function updateStats(stats) {
+    updateElementIfExists('opened-count', stats.opened);
+    updateElementIfExists('total-boosters-opened', stats.opened);
+
+    for (const key of Object.keys(STAT_LABELS)) {
+        const count = stats[key] || 0;
+        const id = toKebabCase(key);
+        updateElementIfExists(`${id}-count`, count);
+        updateElementIfExists(`${id}-rate`, formatRate(count, stats.opened));
+        updateElementIfExists(`${id}-oneinx`, formatOneInX(count, stats.opened));
+    }
+}
+
 function updatePullRates(pullRates) {
-    // Mettre à jour le tableau de comparaison si l'élément existe
-    const tableBody = document.getElementById('pull-rates-table-body');
-    if (tableBody) {
-        tableBody.innerHTML = ''; // Effacer le contenu actuel
-        
-        for (const [key, data] of Object.entries(pullRates.comparison)) {
-            const formattedName = STAT_LABELS[key] || key
-                .replace(/([A-Z])/g, ' $1')
-                .replace(/^./, str => str.toUpperCase());
-            
-            // Créer une classe pour la différence (positif, négatif ou neutre)
-            const diffClass = Math.abs(data.difference) < 10 
-                ? 'neutral' 
-                : data.difference > 0 ? 'positive' : 'negative';
-            
-            // Créer la ligne du tableau
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${formattedName}</td>
-                <td>${(data.expected * 100).toFixed(2)}%</td>
-                <td>${data.expectedText}</td>
-                <td>${(data.actual * 100).toFixed(2)}%</td>
-                <td>${data.actualText}</td>
-                <td class="${diffClass}">${data.difference.toFixed(1)}%</td>
-            `;
-            
-            tableBody.appendChild(row);
-        }
-    }
-    
-    // Mettre à jour le nombre total de boosters ouverts
-    const totalElement = document.getElementById('total-boosters-opened');
-    if (totalElement) {
-        totalElement.textContent = pullRates.totalOpened;
-    }
-}
-
-/**
- * Initialise le panneau de statistiques
- */
-function initializeStatsPanel() {
-    // S'assurer que le panneau existe
-    const statsPanel = document.querySelector('.stats-panel');
-    
-    if (!statsPanel) {
-        createStatsPanel();
+    const list = document.getElementById('pull-rates-list');
+    if (!list) {
         return;
     }
-    
-    // Simplifier le panneau existant
-    simplifyStatsPanel(statsPanel);
-    
-    // Gestionnaire pour le bouton de réinitialisation
-    const resetButton = document.getElementById('reset-stats');
-    if (resetButton) {
-        resetButton.addEventListener('click', function() {
-            if (confirm('Êtes-vous sûr de vouloir réinitialiser toutes les statistiques?')) {
-                if (window.boosterOpener) {
-                    window.boosterOpener.resetStats();
-                    updateStats(window.boosterOpener.getStats());
-                }
-            }
-        });
+
+    list.innerHTML = '';
+
+    for (const [key, data] of Object.entries(pullRates.comparison)) {
+        const label = STAT_LABELS[key] || key;
+        const expectedPercent = formatPercent(data.expected);
+        const actualPercent = formatPercent(data.actual);
+        const actualWidth = Math.min(Math.max(data.actual * 100, 0), 100);
+        const expectedWidth = Math.min(Math.max(data.expected * 100, 0), 100);
+        const diffClass = Math.abs(data.difference) < 10
+            ? 'neutral'
+            : data.difference > 0 ? 'positive' : 'negative';
+
+        const row = document.createElement('article');
+        row.className = `pull-rate-row ${diffClass}`;
+        row.innerHTML = `
+            <div class="pull-rate-head">
+                <span class="pull-rate-name">${label}</span>
+                <span class="pull-rate-actual">${actualPercent}</span>
+            </div>
+            <div class="pull-rate-bar" aria-hidden="true">
+                <span class="pull-rate-expected" style="width: ${expectedWidth}%"></span>
+                <span class="pull-rate-current" style="width: ${actualWidth}%"></span>
+            </div>
+            <div class="pull-rate-meta">
+                <span>Theorie ${expectedPercent} (${data.expectedText})</span>
+                <span>Reel ${data.actualText}</span>
+            </div>
+        `;
+
+        list.appendChild(row);
     }
-    
-    // Gestionnaire pour réduire/agrandir le panneau
-    const toggleButton = document.querySelector('.toggle-stats-panel');
-    
-    if (toggleButton && statsPanel) {
-        toggleButton.addEventListener('click', function() {
-            statsPanel.classList.toggle('collapsed');
-        });
-    }
+
+    updateElementIfExists('total-boosters-opened', pullRates.totalOpened);
 }
 
-/**
- * Simplifie le panneau de statistiques existant
- * @param {HTMLElement} panel - Panneau de statistiques
- */
-function simplifyStatsPanel(panel) {
-    // Supprimer tous les contenus existants sauf le header
-    const header = panel.querySelector('.stats-header');
-    const content = panel.querySelector('.stats-content');
-    
-    if (content) {
-        content.innerHTML = '';
-        
-        // Ajouter uniquement les statistiques de base
-        const basicStats = document.createElement('div');
-        basicStats.className = 'basic-stats';
-        basicStats.innerHTML = `
-            <p>Boosters ouverts: <span id="opened-count">0</span></p>
-            ${formatStatRows()}
-        `;
-        
-        content.appendChild(basicStats);
-        
-        // Créer le tableau simplifié pour les taux de pull
-        const pullRatesDiv = document.createElement('div');
-        pullRatesDiv.id = 'pull-rates-panel';
-        pullRatesDiv.className = 'pull-rates-panel';
-        pullRatesDiv.innerHTML = `
-            <h4>Comparaison des taux de pull</h4>
-            <p>Boosters ouverts: <span id="total-boosters-opened">0</span></p>
-            <table class="pull-rates-table">
-                <thead>
-                    <tr>
-                        <th>Type de carte</th>
-                        <th>Taux théorique</th>
-                        <th>Théorique (1 sur X)</th>
-                        <th>Taux réel</th>
-                        <th>Réel (1 sur X)</th>
-                        <th>Différence</th>
-                    </tr>
-                </thead>
-                <tbody id="pull-rates-table-body">
-                    <!-- Contenu généré dynamiquement -->
-                </tbody>
-            </table>
-        `;
-        
-        content.appendChild(pullRatesDiv);
-        
-        // Ajouter le bouton de réinitialisation
-        const resetButton = document.createElement('button');
-        resetButton.id = 'reset-stats';
-        resetButton.className = 'reset-button';
-        resetButton.textContent = 'Réinitialiser les statistiques';
-        
-        content.appendChild(resetButton);
-    }
-}
-
-/**
- * Crée un panneau de statistiques entièrement nouveau
- */
-function createStatsPanel() {
-    const panel = document.createElement('aside');
-    panel.className = 'stats-panel';
-    
+function renderStatsPanel(panel) {
     panel.innerHTML = `
         <div class="stats-header">
-            <h3>Statistiques</h3>
-            <button class="toggle-stats-panel" aria-label="Réduire/Agrandir le panneau de statistiques">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <div>
+                <p class="stats-eyebrow">Session</p>
+                <h3>Statistiques</h3>
+            </div>
+            <button class="toggle-stats-panel" aria-label="Reduire ou agrandir le panneau de statistiques" aria-expanded="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
             </button>
         </div>
-        
+
         <div class="stats-content">
-            <div class="basic-stats">
-                <p>Boosters ouverts: <span id="opened-count">0</span></p>
-                ${formatStatRows()}
-            </div>
-            
-            <div id="pull-rates-panel" class="pull-rates-panel">
-                <h4>Comparaison des taux de pull</h4>
-                <p>Boosters ouverts: <span id="total-boosters-opened">0</span></p>
-                <table class="pull-rates-table">
-                    <thead>
-                        <tr>
-                            <th>Type de carte</th>
-                            <th>Taux théorique</th>
-                            <th>Théorique (1 sur X)</th>
-                            <th>Taux réel</th>
-                            <th>Réel (1 sur X)</th>
-                            <th>Différence</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pull-rates-table-body">
-                        <!-- Contenu généré dynamiquement -->
-                    </tbody>
-                </table>
-            </div>
-            
-            <button id="reset-stats" class="reset-button">Réinitialiser les statistiques</button>
+            <section class="stats-overview" aria-label="Boosters ouverts">
+                <div>
+                    <span class="stats-overview-label">Boosters</span>
+                    <strong id="opened-count">0</strong>
+                </div>
+                <button id="reset-stats" class="reset-button" type="button">Reset</button>
+            </section>
+
+            <section class="stats-grid" aria-label="Raretés obtenues">
+                ${createStatCardsMarkup()}
+            </section>
+
+            <section id="pull-rates-panel" class="pull-rates-panel" aria-label="Comparaison des taux de pull">
+                <div class="pull-rates-title">
+                    <h4>Taux de pull</h4>
+                    <span><span id="total-boosters-opened">0</span> ouverts</span>
+                </div>
+                <div id="pull-rates-list" class="pull-rates-list"></div>
+            </section>
         </div>
     `;
-    
-    document.body.appendChild(panel);
+}
+
+function initializeStatsPanel() {
+    let statsPanel = document.querySelector('.stats-panel');
+
+    if (!statsPanel) {
+        statsPanel = document.createElement('aside');
+        statsPanel.className = 'stats-panel hidden';
+        document.body.appendChild(statsPanel);
+    }
+
+    renderStatsPanel(statsPanel);
+
+    const resetButton = document.getElementById('reset-stats');
+    if (resetButton) {
+        resetButton.addEventListener('click', function() {
+            if (!window.boosterOpener) {
+                return;
+            }
+
+            window.boosterOpener.resetStats();
+            if (window.pokemonShotsApp && typeof window.pokemonShotsApp.resetDisplayedStats === 'function') {
+                window.pokemonShotsApp.resetDisplayedStats();
+            } else {
+                updateStats(window.boosterOpener.getStats());
+                updatePullRates(window.boosterOpener.checkPullRates());
+            }
+        });
+    }
+
+    const toggleButton = statsPanel.querySelector('.toggle-stats-panel');
+    if (toggleButton) {
+        toggleButton.addEventListener('click', function() {
+            const isCollapsed = statsPanel.classList.toggle('collapsed');
+            toggleButton.setAttribute('aria-expanded', String(!isCollapsed));
+        });
+    }
 }
 
 Object.assign(window, {

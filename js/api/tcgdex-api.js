@@ -122,7 +122,6 @@ function convertCardData(cardData) {
     
     // Gestion spéciale pour les cartes Dresseur et Énergie
     if (cardData.category === 'Dresseur') {
-        rarity = 'trainer';
         type = 'Dresseur';
     } else if (cardData.category === 'Énergie') {
         rarity = 'energy';
@@ -141,6 +140,7 @@ function convertCardData(cardData) {
         type: type,
         rarity: rarity,
         specialType: specialType,
+        category: cardData.category,
         originalRarity: originalRarity, // Conserver la rareté originale
         number: `${cardData.localId}/165`,
         localId: cardData.localId,

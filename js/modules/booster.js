@@ -49,6 +49,7 @@ class BoosterOpener {
      */
     normalizeText(value) {
         return String(value || '')
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
@@ -151,8 +152,7 @@ class BoosterOpener {
         };
 
         this.setData.forEach(card => {
-            const rarity = card.rarity || 'unknown';
-            const mappedRarity = this.rarityMapping[rarity] || 'unknown';
+            const mappedRarity = this.getMappedRarityForCard(card);
 
             if (mappedRarity in available) {
                 available[mappedRarity] = true;
@@ -162,6 +162,30 @@ class BoosterOpener {
         this.addLog(`Raretés disponibles après mapping: ${JSON.stringify(available)}`);
 
         return available;
+    }
+
+    /**
+     * Calcule la catégorie de tirage d'une carte.
+     * Les Dresseurs en cache ancien peuvent avoir rarity="trainer"; on retombe alors
+     * sur leur rareté originale si elle existe, sinon sur un slot peu commun.
+     * @param {Object} card - Carte à classer.
+     * @returns {string} Catégorie de tirage.
+     */
+    getMappedRarityForCard(card) {
+        const rarity = card.rarity || 'unknown';
+        let mappedRarity = this.rarityMapping[rarity] || this.classifyRarity(rarity);
+
+        if (mappedRarity === 'trainer') {
+            const originalMappedRarity = this.classifyRarity(card.originalRarity);
+
+            if (originalMappedRarity && originalMappedRarity !== 'unknown') {
+                mappedRarity = originalMappedRarity;
+            } else {
+                mappedRarity = 'uncommon';
+            }
+        }
+
+        return mappedRarity;
     }
 
     /**
@@ -191,11 +215,7 @@ class BoosterOpener {
      * @returns {Array} Cartes éligibles.
      */
     getCardsByMappedRarity(rarityType) {
-        const originalRarities = Object.entries(this.rarityMapping)
-            .filter(([, mappedRarity]) => mappedRarity === rarityType)
-            .map(([originalRarity]) => originalRarity);
-
-        return this.setData.filter(card => originalRarities.includes(card.rarity));
+        return this.setData.filter(card => this.getMappedRarityForCard(card) === rarityType);
     }
 
     /**
@@ -279,6 +299,33 @@ class BoosterOpener {
     }
 
     /**
+     * Tire le deuxieme slot reverse: Illustration Rare, SIR ou reverse holo standard.
+     * @returns {Object} Carte du deuxieme slot reverse.
+     */
+    pullSecondReverseSlot() {
+        const roll = Math.random();
+        const rates = BoosterOpener.PULL_RATES;
+        let accumulatedRate = rates.specialIllustrationRare;
+
+        if (roll < accumulatedRate) {
+            const card = this.tryPullSpecialCard('specialIllustrationRare', 'SIR');
+            if (card) {
+                return card;
+            }
+        }
+
+        accumulatedRate += rates.illustrationRare;
+        if (roll < accumulatedRate) {
+            const card = this.tryPullSpecialCard('illustrationRare', 'IR');
+            if (card) {
+                return card;
+            }
+        }
+
+        return this.pullReverseHolo('RH2');
+    }
+
+    /**
      * Tire la carte du dernier slot: Rare, Double Rare, Ultra Rare ou Hyper Rare.
      * @returns {Object} Carte du slot rare.
      */
@@ -341,15 +388,8 @@ class BoosterOpener {
             booster.push(card);
         }
 
-        const firstReverseSlot = Math.random() < BoosterOpener.PULL_RATES.illustrationRare
-            ? this.tryPullSpecialCard('illustrationRare', 'IR')
-            : null;
-        booster.push(firstReverseSlot || this.pullReverseHolo('RH1'));
-
-        const secondReverseSlot = Math.random() < BoosterOpener.PULL_RATES.specialIllustrationRare
-            ? this.tryPullSpecialCard('specialIllustrationRare', 'SIR')
-            : null;
-        booster.push(secondReverseSlot || this.pullReverseHolo('RH2'));
+        booster.push(this.pullReverseHolo('RH1'));
+        booster.push(this.pullSecondReverseSlot());
 
         booster.push(this.pullRareSlot());
 

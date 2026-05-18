@@ -41,8 +41,14 @@
                 <!-- Les cartes seront insérées ici par JavaScript -->
             </div>
             <div class="buttons-container">
-                <button id="reveal-all">Tout révéler</button>
-                <button id="new-booster">Nouveau booster</button>
+                <button id="reveal-all" aria-label="Tout révéler avec la barre Espace">
+                    <span>Tout révéler</span>
+                    <kbd>Espace</kbd>
+                </button>
+                <button id="new-booster" aria-label="Ouvrir un nouveau booster avec la touche Entrée">
+                    <span>Nouveau booster</span>
+                    <kbd>Entrée</kbd>
+                </button>
             </div>
         </section>
     </main>
@@ -114,83 +120,6 @@
         <p>Chargement des cartes en arrière-plan...</p>
         <p class="loading-progress">0%</p>
     </div>
-    
-    <!-- Styles pour le panneau de statistiques -->
-    <style>
-    .stats-panel {
-        position: fixed;
-        right: 20px;
-        top: calc(var(--header-height) + 20px);
-        background-color: var(--card-background);
-        border-radius: var(--border-radius);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        width: 320px;
-        max-height: 80vh;
-        transition: max-height 0.3s ease, transform 0.3s ease;
-        overflow: hidden;
-        z-index: 10;
-    }
-
-    .stats-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem;
-        border-bottom: 1px solid #ddd;
-    }
-
-    .toggle-stats-panel {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: transform 0.2s ease;
-    }
-
-    .toggle-stats-panel svg {
-        width: 24px;
-        height: 24px;
-        stroke: var(--text-color);
-        transition: transform 0.2s ease;
-    }
-
-    .stats-panel.collapsed .toggle-stats-panel svg {
-        transform: rotate(180deg);
-    }
-
-    .stats-panel.collapsed .stats-content {
-        display: none;
-    }
-
-    .stats-panel.collapsed {
-        max-height: 60px;
-        transform: translateY(-50%);
-    }
-
-    .stats-content {
-        padding: 1rem;
-        max-height: calc(80vh - 60px);
-        overflow-y: auto;
-    }
-
-    .detailed-stats,
-    .pull-rates-panel {
-        margin-top: 1rem;
-        border-top: 1px solid #ddd;
-        padding-top: 1rem;
-    }
-
-    @media (max-width: 768px) {
-        .stats-panel {
-            width: calc(100% - 40px);
-            right: 20px;
-            left: auto;
-        }
-    }
-    </style>
     
     <!-- Styles pour l'indicateur de chargement -->
     <style>

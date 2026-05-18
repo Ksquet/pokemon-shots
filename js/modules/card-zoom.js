@@ -60,9 +60,14 @@ function hideCardZoom() {
 function setupCardZoomEvents() {
     const cardsContainer = document.querySelector('.cards-container');
     
-    if (cardsContainer) {
+    if (cardsContainer && !cardsContainer.dataset.zoomListenerReady) {
+        cardsContainer.dataset.zoomListenerReady = 'true';
         // Utiliser la délégation d'événements pour gérer les cartes dynamiques
         cardsContainer.addEventListener('click', function(event) {
+            if (cardsContainer.classList.contains('opening-sequence')) {
+                return;
+            }
+
             const cardElement = event.target.closest('.card');
             
             // Vérifier que c'est une carte révélée
@@ -79,7 +84,8 @@ function setupCardZoomEvents() {
     
     // Fermer l'overlay en cliquant dessus
     const cardOverlay = document.getElementById('card-overlay');
-    if (cardOverlay) {
+    if (cardOverlay && !cardOverlay.dataset.closeListenerReady) {
+        cardOverlay.dataset.closeListenerReady = 'true';
         cardOverlay.addEventListener('click', function(event) {
             // Vérifier que le clic n'est pas sur l'image elle-même
             if (!event.target.closest('.card-zoom-container img')) {

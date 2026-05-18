@@ -11,6 +11,23 @@ class PokemonShotsApp {
         this.boosterOpener = null;
         this.elements = this.cacheElements();
         this.isInitialized = false;
+        this.currentBoosterCards = [];
+        this.currentCardIndex = 0;
+        this.openingIntroTimeout = null;
+        this.currentBoosterImagesReady = Promise.resolve();
+        this.suppressNextOpeningClick = false;
+        this.displayedStats = this.initDisplayedStats();
+    }
+
+    initDisplayedStats() {
+        return {
+            opened: 0,
+            doubleRare: 0,
+            ultraRare: 0,
+            illustrationRare: 0,
+            specialIllustrationRare: 0,
+            hyperRare: 0
+        };
     }
 
     /**
@@ -42,9 +59,21 @@ class PokemonShotsApp {
             this.elements.loadingIndicator.style.display = 'none';
         }
 
+        if (this.elements.revealAllButton) {
+            this.elements.revealAllButton.setAttribute('aria-label', 'Afficher le recapitulatif avec la barre Espace');
+            const revealLabel = this.elements.revealAllButton.querySelector('span');
+            if (revealLabel) {
+                revealLabel.textContent = 'Recap';
+            }
+        }
+
         // Générer l'image du booster
         if (this.elements.boosterImg) {
-            this.elements.boosterImg.src = generateBoosterImage();
+            this.elements.boosterImg.onerror = () => {
+                this.elements.boosterImg.onerror = null;
+                this.elements.boosterImg.src = generateBoosterImage();
+            };
+            this.elements.boosterImg.src = 'assets/images/booster_151.jpg';
         }
 
         // Générer le dos de carte dynamiquement
@@ -58,6 +87,7 @@ class PokemonShotsApp {
 
         // Initialiser le panneau de statistiques
         initializeStatsPanel();
+        this.refreshDisplayedStats();
 
         // Initialiser le zoom de carte
         initCardZoom();
@@ -79,10 +109,96 @@ class PokemonShotsApp {
         this.elements.revealAllButton.addEventListener('click', () => this.revealAllBoosterCards());
 
         // Ouvrir un nouveau booster
-        this.elements.newBoosterButton.addEventListener('click', () => {
-            this.resetOpeningArea();
-            this.openBooster();
+        this.elements.newBoosterButton.addEventListener('click', () => this.openNewBooster());
+
+        this.elements.cardsContainer.addEventListener('click', (event) => {
+            if (this.suppressNextOpeningClick) {
+                this.suppressNextOpeningClick = false;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        }, true);
+
+        this.elements.cardsContainer.addEventListener('pointerdown', (event) => {
+            if (event.target.closest('.pack-opening-intro')) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                this.suppressNextOpeningClick = true;
+                this.currentBoosterImagesReady.finally(() => {
+                    this.showCurrentBoosterCard();
+                });
+                return;
+            }
+
+            if (
+                this.elements.cardsContainer.classList.contains('opening-sequence') &&
+                event.target.closest('.card')
+            ) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                this.suppressNextOpeningClick = true;
+                this.advanceBoosterCard();
+            }
         });
+
+        // Raccourcis clavier pour accélérer l'ouverture des boosters
+        document.addEventListener('keydown', (event) => this.handleKeyboardShortcuts(event));
+    }
+
+    /**
+     * Gère les raccourcis clavier de la zone d'ouverture.
+     * @param {KeyboardEvent} event - Evénement clavier
+     */
+    handleKeyboardShortcuts(event) {
+        if (
+            event.defaultPrevented ||
+            event.repeat ||
+            this.isShortcutContextBlocked(event.target) ||
+            !this.isOpeningAreaVisible()
+        ) {
+            return;
+        }
+
+        if (event.code === 'Space') {
+            event.preventDefault();
+            this.showBoosterSummary();
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            this.openNewBooster();
+        }
+    }
+
+    /**
+     * Indique si les raccourcis clavier doivent être ignorés.
+     * @param {EventTarget} target - Elément ciblé par l'événement clavier
+     * @returns {boolean}
+     */
+    isShortcutContextBlocked(target) {
+        if (!(target instanceof Element)) {
+            return false;
+        }
+
+        const interactiveTags = ['INPUT', 'TEXTAREA', 'SELECT'];
+
+        return (
+            target.isContentEditable ||
+            interactiveTags.includes(target.tagName) ||
+            Boolean(target.closest('.stats-panel, #debug-panel, #card-overlay.show'))
+        );
+    }
+
+    /**
+     * Indique si la zone d'ouverture des cartes est affichée.
+     * @returns {boolean}
+     */
+    isOpeningAreaVisible() {
+        return (
+            this.elements.openingArea &&
+            !this.elements.openingArea.classList.contains('hidden')
+        );
     }
 
     /**
@@ -191,12 +307,15 @@ class PokemonShotsApp {
         
         // Vider le conteneur de cartes
         this.elements.cardsContainer.innerHTML = '';
+        this.elements.cardsContainer.classList.remove('recap-grid');
+        this.elements.cardsContainer.classList.add('opening-sequence');
         
         // Créer et ajouter les cartes au DOM
-        const cardElements = renderBoosterCards(booster, null);
-        cardElements.forEach(cardElement => {
-            this.elements.cardsContainer.appendChild(cardElement);
-        });
+        this.currentBoosterCards = renderBoosterCards(booster, null);
+        this.currentCardIndex = 0;
+        this.currentBoosterImagesReady = this.preloadBoosterImages(this.currentBoosterCards);
+        this.displayedStats.opened++;
+        this.refreshDisplayedStats();
         
         // Afficher la zone d'ouverture et masquer la sélection de booster
         this.elements.boosterSelection.classList.add('hidden');
@@ -206,34 +325,223 @@ class PokemonShotsApp {
         this.elements.statsPanel.classList.remove('hidden');
         
         // Mettre à jour les statistiques
-        updateStats(this.boosterOpener.getStats());
+        this.refreshDisplayedStats();
         
         // Mettre à jour les taux de pull
-        updatePullRates(this.boosterOpener.checkPullRates());
+        this.refreshDisplayedStats();
         
         // Réinitialiser les événements de zoom des cartes
-        setupCardZoomEvents();
+        this.startSequentialOpening();
     }
 
     /**
      * Révèle toutes les cartes du booster actuel
      */
+    startSequentialOpening() {
+        this.clearOpeningIntroTimeout();
+
+        const intro = document.createElement('div');
+        intro.className = 'pack-opening-intro';
+
+        const image = document.createElement('img');
+        image.src = 'assets/images/booster_151.jpg';
+        image.alt = 'Booster Pokemon 151';
+
+        intro.appendChild(image);
+        this.elements.cardsContainer.appendChild(intro);
+
+        this.openingIntroTimeout = setTimeout(() => {
+            this.currentBoosterImagesReady.finally(() => {
+                this.showCurrentBoosterCard();
+            });
+        }, 850);
+    }
+
+    preloadBoosterImages(cardElements) {
+        const imagePromises = cardElements.map(cardElement => {
+            const img = cardElement.querySelector('img');
+
+            if (!img) {
+                return Promise.resolve();
+            }
+
+            const decodeImage = () => {
+                if (typeof img.decode === 'function') {
+                    return img.decode().catch(() => {});
+                }
+
+                return Promise.resolve();
+            };
+
+            if (img.complete) {
+                return decodeImage();
+            }
+
+            return new Promise(resolve => {
+                const finish = () => {
+                    decodeImage().finally(resolve);
+                };
+
+                img.addEventListener('load', finish, { once: true });
+                img.addEventListener('error', finish, { once: true });
+            });
+        });
+
+        return Promise.all(imagePromises);
+    }
+
+    showCurrentBoosterCard() {
+        this.clearOpeningIntroTimeout();
+        this.elements.cardsContainer.innerHTML = '';
+        this.elements.cardsContainer.classList.add('opening-sequence');
+        this.elements.cardsContainer.classList.remove('recap-grid');
+
+        const currentCard = this.currentBoosterCards[this.currentCardIndex];
+
+        if (!currentCard) {
+            this.showBoosterSummary();
+            return;
+        }
+
+        revealCard(currentCard);
+        this.recordDisplayedCardStats(currentCard);
+
+        const stage = document.createElement('div');
+        stage.className = 'single-card-stage';
+
+        const counter = document.createElement('div');
+        counter.className = 'opening-counter';
+        counter.textContent = `${this.currentCardIndex + 1} / ${this.currentBoosterCards.length}`;
+
+        stage.appendChild(currentCard);
+        stage.appendChild(counter);
+        this.elements.cardsContainer.appendChild(stage);
+    }
+
+    advanceBoosterCard() {
+        if (!this.elements.cardsContainer.classList.contains('opening-sequence')) {
+            return;
+        }
+
+        this.currentCardIndex++;
+
+        if (this.currentCardIndex >= this.currentBoosterCards.length) {
+            this.showBoosterSummary();
+            return;
+        }
+
+        this.showCurrentBoosterCard();
+    }
+
+    showBoosterSummary() {
+        this.clearOpeningIntroTimeout();
+
+        if (!this.currentBoosterCards.length) {
+            return;
+        }
+
+        this.elements.cardsContainer.innerHTML = '';
+        this.elements.cardsContainer.classList.remove('opening-sequence');
+        this.elements.cardsContainer.classList.add('recap-grid');
+
+        this.currentBoosterCards.forEach(cardElement => {
+            revealCard(cardElement);
+            this.recordDisplayedCardStats(cardElement);
+            this.elements.cardsContainer.appendChild(cardElement);
+        });
+
+        setupCardZoomEvents();
+    }
+
+    recordDisplayedCardStats(cardElement) {
+        if (cardElement.dataset.statsRecorded === 'true') {
+            return;
+        }
+
+        const specialType = cardElement.dataset.specialType;
+
+        if (specialType && specialType in this.displayedStats) {
+            this.displayedStats[specialType]++;
+        } else if (cardElement.dataset.isDoubleRare === 'true') {
+            this.displayedStats.doubleRare++;
+        }
+
+        cardElement.dataset.statsRecorded = 'true';
+        this.refreshDisplayedStats();
+    }
+
+    refreshDisplayedStats() {
+        updateStats(this.displayedStats);
+        updatePullRates(this.getDisplayedPullRates());
+    }
+
+    getDisplayedPullRates() {
+        const comparison = {};
+        const pullRates = BoosterOpener.PULL_RATES;
+
+        for (const [key, expectedRate] of Object.entries(pullRates)) {
+            const actualRate = this.displayedStats.opened > 0
+                ? (this.displayedStats[key] || 0) / this.displayedStats.opened
+                : 0;
+
+            comparison[key] = {
+                expected: expectedRate,
+                actual: actualRate,
+                expectedText: `1 sur ${Math.round(1 / expectedRate)}`,
+                actualText: actualRate > 0 ? `1 sur ${Math.round(1 / actualRate)}` : 'N/A',
+                difference: actualRate > 0 ? (actualRate - expectedRate) / expectedRate * 100 : 0
+            };
+        }
+
+        return {
+            totalOpened: this.displayedStats.opened,
+            comparison
+        };
+    }
+
+    resetDisplayedStats() {
+        this.displayedStats = this.initDisplayedStats();
+        this.currentBoosterCards.forEach(cardElement => {
+            delete cardElement.dataset.statsRecorded;
+        });
+        this.refreshDisplayedStats();
+    }
+
     revealAllBoosterCards() {
-        const cards = document.querySelectorAll('.card:not(.revealed)');
-        revealAllCards(cards, setupCardZoomEvents);
+        this.showBoosterSummary();
+    }
+
+    /**
+     * Ouvre un nouveau booster depuis le bouton ou le raccourci clavier.
+     */
+    openNewBooster() {
+        this.resetOpeningArea();
+        this.openBooster();
     }
 
     /**
      * Réinitialise la zone d'ouverture pour un nouveau booster
      */
     resetOpeningArea() {
+        this.clearOpeningIntroTimeout();
+        this.currentBoosterCards = [];
+        this.currentCardIndex = 0;
         this.elements.cardsContainer.innerHTML = '';
+        this.elements.cardsContainer.classList.remove('opening-sequence', 'recap-grid');
+    }
+
+    clearOpeningIntroTimeout() {
+        if (this.openingIntroTimeout) {
+            clearTimeout(this.openingIntroTimeout);
+            this.openingIntroTimeout = null;
+        }
     }
 }
 
 // Initialiser l'application quand le DOM est chargé
 document.addEventListener('DOMContentLoaded', () => {
     const app = new PokemonShotsApp();
+    window.pokemonShotsApp = app;
     app.init();
 });
 
