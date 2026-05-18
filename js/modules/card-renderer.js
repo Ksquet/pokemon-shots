@@ -277,10 +277,10 @@ function generateCardBack() {
     }
 }
 
-export {
+Object.assign(window, {
     handleImageError,
     renderBoosterCards,
     revealCard,
     revealAllCards,
     generateCardBack
-};
+});

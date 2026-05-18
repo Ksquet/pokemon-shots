@@ -1,12 +1,9 @@
 /**
- * Script principal de l'application Pokemon Shots
+ * Script principal de l'application Pokemon Shots.
+ *
+ * Les dépendances sont chargées par des balises <script> classiques dans index.html afin
+ * que l'application fonctionne aussi lorsqu'elle est ouverte directement en file://.
  */
-// Import des modules modifiés
-import BoosterOpener from './modules/booster.js';
-import { renderBoosterCards, revealCard, revealAllCards, generateCardBack } from './modules/card-renderer.js';
-import { updateStats, updatePullRates, initializeStatsPanel } from './modules/statistics.js';
-import { initCardZoom, setupCardZoomEvents } from './modules/card-zoom.js';
-import { generateBoosterImage } from './utils/booster-image.js';
 
 // Application principale
 class PokemonShotsApp {
@@ -111,10 +108,10 @@ class PokemonShotsApp {
                 this.elements.loadingIndicator.style.display = 'flex';
             }
             
-            // Désactiver le bouton pendant le chargement
+            // Garder le bouton utilisable avec les données statiques pendant le chargement API.
             if (this.elements.openButton) {
-                this.elements.openButton.disabled = true;
-                this.elements.openButton.textContent = 'Chargement des cartes...';
+                this.elements.openButton.disabled = false;
+                this.elements.openButton.textContent = 'Ouvrir un booster (données locales)';
             }
             
             // S'abonner aux mises à jour de progression
@@ -122,7 +119,7 @@ class PokemonShotsApp {
                 window.loadingProgress.onUpdate((percentage) => {
                     // Mettre à jour le texte du bouton avec la progression
                     if (this.elements.openButton) {
-                        this.elements.openButton.textContent = `Chargement des cartes... ${percentage}%`;
+                        this.elements.openButton.textContent = `Ouvrir un booster (sync ${percentage}%)`;
                     }
                 });
             }
@@ -149,28 +146,33 @@ class PokemonShotsApp {
                     }
                 } else {
                     console.error("Erreur: Données de l'API invalides ou vides");
-                    // Afficher un message d'erreur
-                    if (this.elements.openButton) {
-                        this.elements.openButton.disabled = true;
-                        this.elements.openButton.textContent = 'Erreur de chargement - Rechargez la page';
-                    }
+                    this.useLocalFallback('Données API invalides, utilisation des données locales.');
                 }
             } else {
-                console.error("Erreur: Fonction loadPokemon151Data non disponible");
+                this.useLocalFallback('API indisponible, utilisation des données locales.');
             }
         } catch (error) {
             console.error("Erreur lors du chargement des données:", error);
             
-            // Masquer l'indicateur en cas d'erreur
-            if (this.elements.loadingIndicator) {
-                this.elements.loadingIndicator.style.display = 'none';
-            }
-            
-            // Afficher un message d'erreur
-            if (this.elements.openButton) {
-                this.elements.openButton.disabled = true;
-                this.elements.openButton.textContent = 'Erreur de chargement - Rechargez la page';
-            }
+            this.useLocalFallback('Erreur API, utilisation des données locales.');
+        }
+    }
+
+
+    /**
+     * Conserve l'application utilisable lorsque l'API distante est indisponible.
+     * @param {string} message - Message court affiché dans la console.
+     */
+    useLocalFallback(message) {
+        console.warn(message);
+
+        if (this.elements.loadingIndicator) {
+            this.elements.loadingIndicator.style.display = 'none';
+        }
+
+        if (this.elements.openButton) {
+            this.elements.openButton.disabled = false;
+            this.elements.openButton.textContent = 'Ouvrir un booster';
         }
     }
 
@@ -235,8 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
     app.init();
 });
 
-// Exporter l'application pour les tests
-export default PokemonShotsApp;
+// Exposer l'application pour les tests et le débogage manuel.
+window.PokemonShotsApp = PokemonShotsApp;
 
 function enableDebugMode() {
     // S'assurer que l'ouvreur de boosters est initialisé

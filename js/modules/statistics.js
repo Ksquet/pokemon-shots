@@ -225,8 +225,8 @@ function createStatsPanel() {
     document.body.appendChild(panel);
 }
 
-export {
+Object.assign(window, {
     updateStats,
     updatePullRates,
     initializeStatsPanel
-};
+});

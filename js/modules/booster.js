@@ -398,5 +398,5 @@ BoosterOpener.PULL_RATES = {
     doubleRare: 0.1328  // 13.28% - 1 sur 8 packs
 };
 
-// Exporter la classe pour qu'elle soit accessible depuis d'autres scripts
-export default BoosterOpener;
+// Exposer la classe pour une utilisation sans serveur HTTP (file://) et avec des scripts classiques.
+window.BoosterOpener = BoosterOpener;

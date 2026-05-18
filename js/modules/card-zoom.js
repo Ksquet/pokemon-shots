@@ -193,9 +193,9 @@ function initCardZoom() {
     setupCardZoomEvents();
 }
 
-export {
+Object.assign(window, {
     showCardZoom,
     hideCardZoom,
     setupCardZoomEvents,
     initCardZoom
-};
+});
