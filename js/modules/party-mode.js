@@ -27,6 +27,86 @@ function createPartyMode() {
         }
     }
 
+    function getBoosterHistory() {
+        if (Array.isArray(state?.boosterHistory)) {
+            return state.boosterHistory;
+        }
+
+        return state?.lastResult ? [state.lastResult] : [];
+    }
+
+    function recalculatePlayerStatsFromHistory() {
+        if (!state?.players) {
+            return;
+        }
+
+        const history = getBoosterHistory();
+        state.players.forEach(player => {
+            player.drinkTotal = history.reduce((total, booster) => total + (booster.distribution?.[player.username] || 0), 0);
+            player.openedCount = history.filter(booster => booster.opener === player.username).length;
+        });
+        state.boostersOpened = history.length;
+    }
+
+    function getSpecialStatKey(card) {
+        if (card.specialType) {
+            return card.specialType;
+        }
+
+        if (card.isDoubleRare) {
+            return 'doubleRare';
+        }
+
+        return null;
+    }
+
+    function createEmptySpecialStats() {
+        return {
+            doubleRare: 0,
+            ultraRare: 0,
+            illustrationRare: 0,
+            specialIllustrationRare: 0,
+            hyperRare: 0
+        };
+    }
+
+    function getPlayerPullStats(username, history) {
+        const openedBoosters = history.filter(booster => booster.opener === username);
+        const stats = createEmptySpecialStats();
+
+        openedBoosters.forEach(booster => {
+            booster.cards?.forEach(card => {
+                const statKey = getSpecialStatKey(card);
+                if (statKey && statKey in stats) {
+                    stats[statKey]++;
+                }
+            });
+        });
+
+        return {
+            opened: openedBoosters.length,
+            ...stats
+        };
+    }
+
+    function normalizeState() {
+        if (!state) {
+            return;
+        }
+
+        state.players?.forEach(player => {
+            player.ownedCards ||= { common: [], uncommon: [] };
+            player.ownedCards.common ||= [];
+            player.ownedCards.uncommon ||= [];
+        });
+
+        if (!Array.isArray(state.boosterHistory)) {
+            state.boosterHistory = state.lastResult ? [state.lastResult] : [];
+        }
+
+        recalculatePlayerStatsFromHistory();
+    }
+
     function shuffle(array) {
         const copy = [...array];
         for (let i = copy.length - 1; i > 0; i--) {
@@ -113,6 +193,7 @@ function createPartyMode() {
             document.querySelector('.booster-selection')?.classList.add('hidden');
         } else {
             document.querySelector('.booster-selection')?.classList.remove('hidden');
+            window.pokemonShotsApp?.updatePartyOpenerPreview?.();
         }
     }
 
@@ -132,11 +213,14 @@ function createPartyMode() {
                     common: [],
                     uncommon: []
                 },
-                drinkTotal: 0
+                drinkTotal: 0,
+                openedCount: 0
             })),
             openerIndex: 0,
             draft: null,
             lastResult: null,
+            boostersOpened: 0,
+            boosterHistory: [],
             createdAt: new Date().toISOString()
         };
     }
@@ -283,7 +367,7 @@ function createPartyMode() {
         boosterCards.forEach(card => {
             const owner = getOwnerForCard(card);
             if (owner) {
-                const drinks = 1 + (card.isReverseHolo ? 1 : 0);
+                const drinks = 1;
                 distribution[owner.username] += drinks;
                 events.push({
                     type: 'owned-card',
@@ -305,26 +389,69 @@ function createPartyMode() {
             }
         });
 
-        Object.entries(distribution).forEach(([username, drinks]) => {
-            const player = state.players.find(candidate => candidate.username === username);
-            if (player) {
-                player.drinkTotal += drinks;
-            }
-        });
-
         const nextOpener = state.players[(state.openerIndex + 1) % state.players.length];
 
-        state.lastResult = {
+        const boosterRecord = {
             opener: opener.username,
             nextOpener: nextOpener.username,
             distribution,
             events,
+            cards: boosterCards.map(card => ({
+                ...getCardLite(card),
+                mappedRarity: app?.boosterOpener?.getMappedRarity(card),
+                specialType: card.specialType,
+                isDoubleRare: Boolean(card.isDoubleRare),
+                isReverseHolo: Boolean(card.isReverseHolo),
+                isFoil: Boolean(card.isFoil)
+            })),
             openedAt: new Date().toISOString()
         };
+
+        state.boosterHistory ||= [];
+        state.boosterHistory.push(boosterRecord);
+        state.lastResult = boosterRecord;
+        recalculatePlayerStatsFromHistory();
         state.openerIndex = (state.openerIndex + 1) % state.players.length;
         savePartyState();
         render();
         return state.lastResult;
+    }
+
+    function getSummary() {
+        if (!state?.active || state.draft) {
+            return null;
+        }
+
+        const history = getBoosterHistory();
+        const players = state.players.map(player => ({
+            username: player.username,
+            openedCount: history.filter(booster => booster.opener === player.username).length,
+            drinkTotal: history.reduce((total, booster) => total + (booster.distribution?.[player.username] || 0), 0),
+            commonCount: player.ownedCards.common.length,
+            uncommonCount: player.ownedCards.uncommon.length,
+            ownedCards: player.ownedCards,
+            pullStats: getPlayerPullStats(player.username, history),
+            lastBoosterDrinks: state.lastResult?.distribution?.[player.username] || 0
+        }));
+
+        const totalDrinks = players.reduce((total, player) => total + player.drinkTotal, 0);
+        const topPlayer = players.reduce((leader, player) => {
+            if (!leader || player.drinkTotal > leader.drinkTotal) {
+                return player;
+            }
+
+            return leader;
+        }, null);
+
+        return {
+            boostersOpened: history.length,
+            totalDrinks,
+            currentOpener: state.players[state.openerIndex]?.username || null,
+            lastResult: state.lastResult,
+            topPlayer,
+            boosterHistory: history,
+            players
+        };
     }
 
     function renderSetup() {
@@ -536,6 +663,7 @@ function createPartyMode() {
 
     function init(options = {}) {
         app = options.app || null;
+        normalizeState();
         ensurePartyPanel();
         render();
     }
@@ -544,6 +672,8 @@ function createPartyMode() {
         init,
         isActive: () => Boolean(state?.active && !state.draft),
         getCardOwner: (card) => state?.active && !state.draft ? getOwnerForCard(card) : null,
+        getCurrentOpener: () => state?.active && !state.draft ? state.players[state.openerIndex] : null,
+        getSummary,
         scoreBooster
     };
 }

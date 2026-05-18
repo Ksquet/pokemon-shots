@@ -103,6 +103,171 @@ function updatePullRates(pullRates) {
     updateElementIfExists('total-boosters-opened', pullRates.totalOpened);
 }
 
+function renderPartyCardDetails(cards) {
+    if (!cards?.length) {
+        return '<p class="party-stats-empty">Aucune carte.</p>';
+    }
+
+    return `
+        <div class="party-stats-card-list">
+            ${cards.map(card => `
+                <article>
+                    <img src="${card.imageUrl || `assets/images/cards/151/${card.id}.jpg`}" alt="${card.name}">
+                    <span>${card.name}</span>
+                </article>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderBoosterHistory(history) {
+    if (!history?.length) {
+        return '<p class="party-stats-empty">Aucun booster sauvegarde pour cette soiree.</p>';
+    }
+
+    return history.map((booster, index) => `
+        <details class="party-booster-history-item">
+            <summary>
+                <strong>Booster ${index + 1} - ${booster.opener}</strong>
+                <span>${booster.openedAt ? new Date(booster.openedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+            </summary>
+            <div class="party-booster-history-grid">
+                ${booster.cards?.map(card => `
+                    <article>
+                        <span>${card.name}</span>
+                        <em>${card.specialType || card.mappedRarity || card.rarity || '-'}</em>
+                    </article>
+                `).join('') || ''}
+            </div>
+        </details>
+    `).join('');
+}
+
+function renderPartyPlayerPullStats(player) {
+    const stats = player.pullStats || {};
+    const opened = stats.opened || 0;
+    const rates = window.BoosterOpener?.PULL_RATES || {};
+
+    return `
+        <div class="party-player-pulls">
+            <div class="party-player-pulls-head">
+                <strong>Stats de ses boosters</strong>
+                <span>${opened} ouvert${opened > 1 ? 's' : ''}</span>
+            </div>
+            <div class="party-player-pull-grid">
+                ${Object.entries(STAT_LABELS).map(([key, label]) => {
+                    const count = stats[key] || 0;
+                    return `
+                        <article>
+                            <span>${label}</span>
+                            <strong>${count}</strong>
+                            <em>${formatRate(count, opened)}</em>
+                        </article>
+                    `;
+                }).join('')}
+            </div>
+            <div class="party-player-pull-list">
+                ${Object.entries(STAT_LABELS).map(([key, label]) => {
+                    const count = stats[key] || 0;
+                    const actualRate = opened > 0 ? count / opened : 0;
+                    const expectedRate = rates[key] || 0;
+                    const actualWidth = Math.min(Math.max(actualRate * 100, 0), 100);
+                    const expectedWidth = Math.min(Math.max(expectedRate * 100, 0), 100);
+                    return `
+                        <article>
+                            <div>
+                                <span>${label}</span>
+                                <strong>${formatPercent(actualRate)}</strong>
+                            </div>
+                            <div class="pull-rate-bar" aria-hidden="true">
+                                <span class="pull-rate-expected" style="width: ${expectedWidth}%"></span>
+                                <span class="pull-rate-current" style="width: ${actualWidth}%"></span>
+                            </div>
+                            <small>Theorie ${formatPercent(expectedRate)} - Reel ${count > 0 ? `1 sur ${Math.round(opened / count)}` : 'N/A'}</small>
+                        </article>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function updatePartyStats(summary) {
+    const section = document.getElementById('party-stats-section');
+    if (!section) {
+        return;
+    }
+
+    if (!summary) {
+        section.classList.add('hidden');
+        section.innerHTML = '';
+        return;
+    }
+
+    section.classList.remove('hidden');
+    section.innerHTML = `
+        <div class="party-stats-header">
+            <div>
+                <p class="stats-eyebrow">Soiree</p>
+                <h4>Recap Pokemon Shots</h4>
+            </div>
+            <span>${summary.boostersOpened} booster${summary.boostersOpened > 1 ? 's' : ''}</span>
+        </div>
+        <div class="party-stats-overview">
+            <article>
+                <span>Gorgees totales</span>
+                <strong>${summary.totalDrinks}</strong>
+            </article>
+            <article>
+                <span>Prochain ouvreur</span>
+                <strong>${summary.currentOpener || '-'}</strong>
+            </article>
+            <article>
+                <span>Plus gros distributeur</span>
+                <strong>${summary.topPlayer?.username || '-'}</strong>
+            </article>
+        </div>
+        <div class="party-player-stats">
+            ${summary.players.map(player => `
+                <article>
+                    <div>
+                        <strong>${player.username}</strong>
+                        <span>${player.commonCount} C / ${player.uncommonCount} U</span>
+                    </div>
+                    <dl>
+                        <div>
+                            <dt>Boosters</dt>
+                            <dd>${player.openedCount}</dd>
+                        </div>
+                        <div>
+                            <dt>Total</dt>
+                            <dd>${player.drinkTotal}</dd>
+                        </div>
+                        <div>
+                            <dt>Dernier</dt>
+                            <dd>${player.lastBoosterDrinks}</dd>
+                        </div>
+                    </dl>
+                    <details class="party-player-card-details">
+                        <summary>Voir le detail du joueur</summary>
+                        <div>
+                            ${renderPartyPlayerPullStats(player)}
+                            <h5>Communes</h5>
+                            ${renderPartyCardDetails(player.ownedCards.common)}
+                            <h5>Uncommons</h5>
+                            ${renderPartyCardDetails(player.ownedCards.uncommon)}
+                        </div>
+                    </details>
+                </article>
+            `).join('')}
+        </div>
+        <details class="party-history-details">
+            <summary>Historique des boosters de la soiree</summary>
+            ${renderBoosterHistory(summary.boosterHistory)}
+        </details>
+    `;
+}
+
 function renderStatsPanel(panel) {
     panel.innerHTML = `
         <div class="stats-header">
@@ -137,6 +302,8 @@ function renderStatsPanel(panel) {
                 </div>
                 <div id="pull-rates-list" class="pull-rates-list"></div>
             </section>
+
+            <section id="party-stats-section" class="party-stats-section hidden" aria-label="Statistiques de la soiree"></section>
         </div>
     `;
 }
@@ -181,5 +348,6 @@ function initializeStatsPanel() {
 Object.assign(window, {
     updateStats,
     updatePullRates,
+    updatePartyStats,
     initializeStatsPanel
 });

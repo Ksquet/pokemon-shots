@@ -109,7 +109,9 @@ class PokemonShotsApp {
         this.loadCardDataInBackground();
 
         this.isInitialized = true;
+        this.placeStatsPanelAfterRecap();
         this.updateAccountDependentUi();
+        this.updatePartyOpenerPreview();
     }
 
     updateAccountDependentUi() {
@@ -122,6 +124,34 @@ class PokemonShotsApp {
         if (this.boosterOpener) {
             this.elements.openButton.textContent = 'Ouvrir un booster';
         }
+    }
+
+    updatePartyOpenerPreview() {
+        if (!this.elements.boosterSelection) {
+            return;
+        }
+
+        this.elements.boosterSelection.querySelector('.party-selection-opener')?.remove();
+
+        const openerBanner = this.createPartyOpenerBanner('Prochain a ouvrir');
+        if (!openerBanner) {
+            return;
+        }
+
+        const preview = document.createElement('div');
+        preview.className = 'party-selection-opener';
+        preview.appendChild(openerBanner);
+
+        const boosterContainer = this.elements.boosterSelection.querySelector('.booster-container');
+        this.elements.boosterSelection.insertBefore(preview, boosterContainer);
+    }
+
+    placeStatsPanelAfterRecap() {
+        if (!this.elements.statsPanel || !this.elements.cardsContainer) {
+            return;
+        }
+
+        this.elements.cardsContainer.after(this.elements.statsPanel);
     }
 
     handleAccountSessionChange(user) {
@@ -372,8 +402,7 @@ class PokemonShotsApp {
         this.elements.boosterSelection.classList.add('hidden');
         this.elements.openingArea.classList.remove('hidden');
         
-        // Afficher le panneau de statistiques
-        this.elements.statsPanel.classList.remove('hidden');
+        this.elements.statsPanel.classList.add('hidden');
         
         // Mettre à jour les statistiques
         this.refreshDisplayedStats();
@@ -404,16 +433,22 @@ class PokemonShotsApp {
             cardElement.classList.add('owned-party-card');
             const badge = document.createElement('span');
             badge.className = 'party-card-owner-badge';
-            badge.textContent = card.isReverseHolo ? `${owner.username} +1` : owner.username;
-            badge.title = card.isReverseHolo
-                ? `${owner.username} possede cette carte: +1 bonus reverse`
-                : `${owner.username} possede cette carte`;
+            badge.textContent = owner.username;
+            badge.title = `${owner.username} possede cette carte`;
             cardElement.appendChild(badge);
         });
     }
 
     startSequentialOpening() {
         this.clearOpeningIntroTimeout();
+
+        const stage = document.createElement('div');
+        stage.className = 'single-card-stage';
+
+        const openerBanner = this.createPartyOpenerBanner();
+        if (openerBanner) {
+            stage.appendChild(openerBanner);
+        }
 
         const intro = document.createElement('div');
         intro.className = 'pack-opening-intro';
@@ -423,13 +458,28 @@ class PokemonShotsApp {
         image.alt = 'Booster Pokemon 151';
 
         intro.appendChild(image);
-        this.elements.cardsContainer.appendChild(intro);
+        stage.appendChild(intro);
+        this.elements.cardsContainer.appendChild(stage);
 
         this.openingIntroTimeout = setTimeout(() => {
             this.currentBoosterImagesReady.finally(() => {
                 this.showCurrentBoosterCard();
             });
         }, 850);
+    }
+
+    createPartyOpenerBanner(label = 'Booster ouvert par') {
+        const opener = window.partyMode?.getCurrentOpener?.();
+
+        if (!opener) {
+            return null;
+        }
+
+        const openerBanner = document.createElement('div');
+        openerBanner.className = 'party-opener-banner';
+        openerBanner.innerHTML = `<span>${label}</span><strong>${opener.username}</strong>`;
+
+        return openerBanner;
     }
 
     preloadBoosterImages(cardElements) {
@@ -484,6 +534,11 @@ class PokemonShotsApp {
         const stage = document.createElement('div');
         stage.className = 'single-card-stage';
 
+        const openerBanner = this.createPartyOpenerBanner();
+        if (openerBanner) {
+            stage.appendChild(openerBanner);
+        }
+
         const counter = document.createElement('div');
         counter.className = 'opening-counter';
         counter.textContent = `${this.currentCardIndex + 1} / ${this.currentBoosterCards.length}`;
@@ -531,7 +586,19 @@ class PokemonShotsApp {
             this.renderPartyResultInSummary(partyResult);
         }
 
+        this.showStatsAfterSummary();
         setupCardZoomEvents();
+    }
+
+    showStatsAfterSummary() {
+        if (!this.elements.statsPanel) {
+            return;
+        }
+
+        this.placeStatsPanelAfterRecap();
+        updatePartyStats(window.partyMode?.getSummary?.() || null);
+        this.refreshDisplayedStats();
+        this.elements.statsPanel.classList.remove('hidden', 'collapsed');
     }
 
     renderPartyResultInSummary(result) {
@@ -543,7 +610,7 @@ class PokemonShotsApp {
         resultElement.className = 'party-inline-result';
         resultElement.innerHTML = `
             <div class="party-inline-header">
-                <div>
+                <div class="is-current-opener">
                     <span>Booster ouvert par</span>
                     <strong>${result.opener}</strong>
                 </div>
@@ -562,7 +629,7 @@ class PokemonShotsApp {
                 `).join('')}
             </div>
         `;
-        this.elements.cardsContainer.after(resultElement);
+        this.elements.cardsContainer.before(resultElement);
     }
 
     recordDisplayedCardStats(cardElement) {
@@ -642,6 +709,7 @@ class PokemonShotsApp {
         this.currentBoosterPartyScored = false;
         this.elements.cardsContainer.innerHTML = '';
         document.querySelector('.party-inline-result')?.remove();
+        this.elements.statsPanel?.classList.add('hidden');
         this.elements.cardsContainer.classList.remove('opening-sequence', 'recap-grid');
     }
 
