@@ -133,6 +133,11 @@ function renderBoosterCards(booster, onReveal = null) {
         
         // Ajouter l'image à la carte
         cardElement.appendChild(cardImage);
+
+        const priceMarkup = renderCardmarketPriceMarkup(card);
+        if (priceMarkup) {
+            cardElement.insertAdjacentHTML('beforeend', priceMarkup);
+        }
         
         // Ajouter un délai pour l'animation d'entrée
         cardElement.style.animationDelay = `${index * 0.1}s`;
@@ -209,6 +214,38 @@ function generateCardBack() {
     }
 }
 
+function getCardmarketPrice(card) {
+    const prices = card?.cardmarketPrices || {};
+    return card?.isReverseHolo
+        ? prices.reverse || prices.normal || null
+        : prices.normal || null;
+}
+
+function formatCardmarketPrice(price) {
+    if (!price || !Number.isFinite(Number(price.low))) {
+        return null;
+    }
+
+    return new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: price.unit || 'EUR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(Number(price.low));
+}
+
+function renderCardmarketPriceMarkup(card, className = 'card-price-badge') {
+    const price = getCardmarketPrice(card);
+    const formattedPrice = formatCardmarketPrice(price);
+
+    if (!formattedPrice) {
+        return '';
+    }
+
+    const variantLabel = card?.isReverseHolo ? 'Reverse' : 'Standard';
+    return `<span class="${className}" title="Prix minimum Cardmarket (${variantLabel})">${formattedPrice}</span>`;
+}
+
 function generateFallbackCardBack() {
     try {
         const canvas = document.createElement('canvas');
@@ -253,6 +290,9 @@ function generateFallbackCardBack() {
 
 Object.assign(window, {
     handleImageError,
+    getCardmarketPrice,
+    formatCardmarketPrice,
+    renderCardmarketPriceMarkup,
     renderBoosterCards,
     revealCard,
     revealAllCards,

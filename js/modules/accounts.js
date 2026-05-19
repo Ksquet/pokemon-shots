@@ -193,7 +193,9 @@ function createAccountModule() {
             specialType: card.specialType || '',
             number: card.number,
             imageUrl: card.imageUrl,
-            type: card.type
+            type: card.type,
+            isReverseHolo: Boolean(card.isReverseHolo),
+            cardmarketPrices: card.cardmarketPrices || null
         };
     }
 
@@ -271,6 +273,34 @@ function createAccountModule() {
         [...db.boosters]
             .reverse()
             .forEach(entry => addCardsToCollectionInDb(db, entry.username, entry.cards, entry.openedAt));
+    }
+
+    function refreshCardPricesFromSetData(setCards = []) {
+        const db = loadAccountDb();
+        const cardsByKey = new Map(setCards.map(card => [getCardKey(card), card]));
+        let changed = false;
+
+        const applyPrices = (card) => {
+            const freshCard = cardsByKey.get(getCardKey(card));
+            if (!freshCard?.cardmarketPrices) {
+                return;
+            }
+
+            card.cardmarketPrices = freshCard.cardmarketPrices;
+            changed = true;
+        };
+
+        db.boosters?.forEach(entry => entry.cards?.forEach(applyPrices));
+
+        Object.values(db.collections || {}).forEach(collection => {
+            Object.values(collection || {}).forEach(applyPrices);
+        });
+
+        if (changed) {
+            saveAccountDb(db);
+            renderAdminPanel();
+            renderCollectionPanel();
+        }
     }
 
     function parseDateBoundary(value, endOfDay = false) {
@@ -358,6 +388,8 @@ function createAccountModule() {
                 localId: card.localId,
                 imageUrl: card.imageUrl,
                 type: card.type,
+                isReverseHolo: Boolean(card.isReverseHolo),
+                cardmarketPrices: card.cardmarketPrices || null,
                 debugOrder: card.DEBUG_ORDER || ''
             }))
         };
@@ -873,12 +905,20 @@ function createAccountModule() {
         const owned = collection[key];
         const count = owned?.count || 0;
         const imageUrl = card.imageUrl || owned?.imageUrl || `assets/images/cards/151/${card.id}.jpg`;
+        const priceCard = {
+            ...card,
+            ...owned,
+            cardmarketPrices: card.cardmarketPrices || owned?.cardmarketPrices,
+            isReverseHolo: Boolean(owned?.isReverseHolo)
+        };
+        const priceMarkup = renderCardmarketPriceMarkup?.(priceCard, 'collection-card-price') || '';
 
         return `
             <article class="collection-card ${count ? 'is-owned' : 'is-missing'}">
                 <div class="collection-card-image">
                     <img src="${imageUrl}" alt="${card.name}" loading="lazy" data-card-key="${key}">
                     <strong>x${count}</strong>
+                    ${priceMarkup}
                 </div>
                 <div>
                     <span>${card.number || card.localId || ''}</span>
@@ -1220,7 +1260,8 @@ function createAccountModule() {
         logout,
         recordBooster,
         consumeDebugNextBooster,
-        resetCollections
+        resetCollections,
+        refreshCardPricesFromSetData
     };
 }
 

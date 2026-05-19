@@ -7,8 +7,7 @@ const API_CONFIG = {
     baseUrl: 'https://api.tcgdex.net/v2/fr',
     setId: 'sv03.5',
     fullSetPath: 'sv/sv03.5',
-    cacheTime: 7 * 24 * 60 * 60 * 1000, // 7 jours en millisecondes
-    cacheKey: 'pokemon151Data'
+    cacheKey: 'pokemon151DataWithPricing'
 };
 
 // Mappings des raretés
@@ -49,6 +48,54 @@ function mapApiRarity(rarity) {
     return RARITY_MAP[rarity] || NORMALIZED_RARITY_MAP[normalizeRarityKey(rarity)] || 'common';
 }
 
+function getCardmarketPricing(variant) {
+    return variant?.pricing?.cardmarket || null;
+}
+
+function isBaseVariant(variant, type) {
+    return (
+        variant?.type === type &&
+        variant?.size === 'Standard' &&
+        !variant?.stamp &&
+        !variant?.foil
+    );
+}
+
+function getVariantPrice(cardData, type) {
+    const variants = Array.isArray(cardData.variants_detailed) ? cardData.variants_detailed : [];
+    const variant = variants.find(candidate => isBaseVariant(candidate, type))
+        || variants.find(candidate => candidate?.type === type && candidate?.size === 'Standard');
+    const pricing = getCardmarketPricing(variant) || cardData.pricing?.cardmarket || null;
+
+    if (!pricing) {
+        return null;
+    }
+
+    const low = type === 'Reverse'
+        ? pricing['low-holo'] ?? pricing.low
+        : pricing.low;
+    const numericLow = Number(low);
+
+    if (!Number.isFinite(numericLow)) {
+        return null;
+    }
+
+    return {
+        low: numericLow,
+        unit: pricing.unit || 'EUR',
+        updated: pricing.updated || null,
+        idProduct: pricing.idProduct || null,
+        variantType: type
+    };
+}
+
+function getCardmarketPrices(cardData) {
+    return {
+        normal: getVariantPrice(cardData, 'Normal'),
+        reverse: getVariantPrice(cardData, 'Reverse')
+    };
+}
+
 /**
  * Vérifie si des données en cache sont valides
  * @returns {Object|null} Données en cache ou null
@@ -58,9 +105,10 @@ function getValidCachedData() {
         const cachedData = localStorage.getItem(API_CONFIG.cacheKey);
         
         if (cachedData) {
-            const { data, timestamp } = JSON.parse(cachedData);
+            const { data, cachedDay } = JSON.parse(cachedData);
+            const today = new Date().toISOString().slice(0, 10);
             
-            if (Date.now() - timestamp < API_CONFIG.cacheTime) {
+            if (cachedDay === today) {
                 return data;
             }
         }
@@ -119,7 +167,8 @@ function convertCardData(cardData) {
         originalRarity: originalRarity, // Conserver la rareté originale
         number: `${cardData.localId}/165`,
         localId: cardData.localId,
-        imageUrl: imageUrl
+        imageUrl: imageUrl,
+        cardmarketPrices: getCardmarketPrices(cardData)
     };
 }
 
@@ -147,7 +196,11 @@ async function loadCardDetails(cardId) {
             rarity: 'common',
             number: `${cardId}/165`,
             localId: cardId,
-            imageUrl: `https://assets.tcgdex.net/fr/${API_CONFIG.fullSetPath}/${cardId}/high.jpg`
+            imageUrl: `https://assets.tcgdex.net/fr/${API_CONFIG.fullSetPath}/${cardId}/high.jpg`,
+            cardmarketPrices: {
+                normal: null,
+                reverse: null
+            }
         };
     }
 }
@@ -231,6 +284,7 @@ async function loadPokemon151Data() {
             // Mettre en cache les données pour les prochaines visites
             localStorage.setItem(API_CONFIG.cacheKey, JSON.stringify({
                 data: convertedCards,
+                cachedDay: new Date().toISOString().slice(0, 10),
                 timestamp: Date.now()
             }));
             

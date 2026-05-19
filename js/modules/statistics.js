@@ -114,6 +114,7 @@ function renderPartyCardDetails(cards) {
                 <article>
                     <img src="${card.imageUrl || `assets/images/cards/151/${card.id}.jpg`}" alt="${card.name}">
                     <span>${card.name}</span>
+                    ${renderCardmarketPriceMarkup?.(card, 'mini-card-price') || ''}
                 </article>
             `).join('')}
         </div>

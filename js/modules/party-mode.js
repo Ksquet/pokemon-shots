@@ -255,7 +255,9 @@ function createPartyMode() {
             rarity: card.rarity,
             number: card.number,
             imageUrl: card.imageUrl,
-            type: card.type
+            type: card.type,
+            isReverseHolo: Boolean(card.isReverseHolo),
+            cardmarketPrices: card.cardmarketPrices || null
         };
     }
 
@@ -1056,6 +1058,7 @@ function createPartyMode() {
                     <article>
                         <img src="${card.imageUrl || `assets/images/cards/151/${card.id}.jpg`}" alt="${card.name}">
                         <span>${card.name}</span>
+                        ${renderCardmarketPriceMarkup?.(card, 'mini-card-price') || ''}
                     </article>
                 `).join('')}
             </div>

@@ -111,6 +111,7 @@ class PokemonShotsApp {
 
         this.isInitialized = true;
         this.placeStatsPanelAfterRecap();
+        this.updateOpeningControls();
         this.updateAccountDependentUi();
         this.updatePartyOpenerPreview();
     }
@@ -153,6 +154,15 @@ class PokemonShotsApp {
         }
 
         this.elements.cardsContainer.after(this.elements.statsPanel);
+    }
+
+    updateOpeningControls() {
+        if (!this.elements.revealAllButton || !this.elements.cardsContainer) {
+            return;
+        }
+
+        const isRecapVisible = this.elements.cardsContainer.classList.contains('recap-grid');
+        this.elements.revealAllButton.classList.toggle('hidden', isRecapVisible);
     }
 
     handleAccountSessionChange(user) {
@@ -256,6 +266,7 @@ class PokemonShotsApp {
                 setupCardZoomEvents();
             }
 
+            this.updateOpeningControls();
             return;
         }
 
@@ -366,6 +377,7 @@ class PokemonShotsApp {
                 if (cardsData && Array.isArray(cardsData) && cardsData.length > 0) {
                     // Mettre à jour l'ouvreur de boosters avec les données complètes.
                     this.initBoosterOpener(cardsData);
+                    window.accounts?.refreshCardPricesFromSetData?.(cardsData);
                     
                     // Activer le bouton
                     if (this.elements.openButton) {
@@ -426,6 +438,7 @@ class PokemonShotsApp {
         document.querySelector('.party-inline-result')?.remove();
         this.elements.cardsContainer.classList.remove('recap-grid');
         this.elements.cardsContainer.classList.add('opening-sequence');
+        this.updateOpeningControls();
         
         // Créer et ajouter les cartes au DOM
         this.currentBoosterCards = renderBoosterCards(booster, null);
@@ -577,6 +590,7 @@ class PokemonShotsApp {
         this.elements.cardsContainer.innerHTML = '';
         this.elements.cardsContainer.classList.add('opening-sequence');
         this.elements.cardsContainer.classList.remove('recap-grid');
+        this.updateOpeningControls();
 
         const currentCard = this.currentBoosterCards[this.currentCardIndex];
 
@@ -630,6 +644,7 @@ class PokemonShotsApp {
         this.elements.cardsContainer.innerHTML = '';
         this.elements.cardsContainer.classList.remove('opening-sequence');
         this.elements.cardsContainer.classList.add('recap-grid');
+        this.updateOpeningControls();
 
         this.currentBoosterCards.forEach(cardElement => {
             revealCard(cardElement);
@@ -830,6 +845,7 @@ class PokemonShotsApp {
         document.querySelector('.party-inline-result')?.remove();
         this.elements.statsPanel?.classList.add('hidden');
         this.elements.cardsContainer.classList.remove('opening-sequence', 'recap-grid');
+        this.updateOpeningControls();
     }
 
     clearOpeningIntroTimeout() {
