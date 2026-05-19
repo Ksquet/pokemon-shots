@@ -64,10 +64,10 @@ class PokemonShotsApp {
         }
 
         if (this.elements.revealAllButton) {
-            this.elements.revealAllButton.setAttribute('aria-label', 'Afficher le recapitulatif avec la barre Espace');
+            this.elements.revealAllButton.setAttribute('aria-label', 'Afficher le récapitulatif avec la barre Espace');
             const revealLabel = this.elements.revealAllButton.querySelector('span');
             if (revealLabel) {
-                revealLabel.textContent = 'Recap';
+                revealLabel.textContent = 'Récap';
             }
         }
 
@@ -134,7 +134,7 @@ class PokemonShotsApp {
 
         this.elements.boosterSelection.querySelector('.party-selection-opener')?.remove();
 
-        const openerBanner = this.createPartyOpenerBanner('Prochain a ouvrir');
+        const openerBanner = this.createPartyOpenerBanner('Prochain à ouvrir');
         if (!openerBanner) {
             return;
         }
@@ -467,7 +467,7 @@ class PokemonShotsApp {
             const badge = document.createElement('span');
             badge.className = 'party-card-owner-badge';
             badge.textContent = owner.username;
-            badge.title = `${owner.username} possede cette carte`;
+            badge.title = `${owner.username} possède cette carte`;
             cardElement.appendChild(badge);
         });
     }
@@ -491,7 +491,7 @@ class PokemonShotsApp {
             const badge = document.createElement('span');
             badge.className = 'party-x2-card-badge';
             badge.textContent = 'x2';
-            badge.title = 'Carte x2 de la soiree';
+            badge.title = 'Carte x2 de la soirée';
             cardElement.appendChild(badge);
         });
     }
@@ -512,7 +512,7 @@ class PokemonShotsApp {
 
         const image = document.createElement('img');
         image.src = 'assets/images/booster_151.jpg';
-        image.alt = 'Booster Pokemon 151';
+        image.alt = 'Booster Pokémon 151';
 
         intro.appendChild(image);
         stage.appendChild(intro);
@@ -679,15 +679,15 @@ class PokemonShotsApp {
                     <strong>${result.opener}</strong>
                 </div>
                 <div>
-                    <span>Prochain a ouvrir</span>
+                    <span>Prochain à ouvrir</span>
                     <strong>${result.nextOpener || '-'}</strong>
                 </div>
             </div>
-            <h3>Gorgees a distribuer</h3>
+            <h3>Gorgées à distribuer</h3>
             ${result.everyoneDrinks ? `
                 <div class="party-everyone-drinks">
                     <strong>Tout le monde boit !</strong>
-                    <span>Une gorgee pour chaque joueur.</span>
+                    <span>Une gorgée pour chaque joueur.</span>
                 </div>
             ` : ''}
             <div class="party-drink-grid">
@@ -717,8 +717,8 @@ class PokemonShotsApp {
         if (!remainingUses) {
             return `
                 <div class="party-x2-result is-applied">
-                    <strong>${totalUses} x2 applique${totalUses > 1 ? 's' : ''}</strong>
-                    <span>${applications.map(application => `${application.target} +${application.bonus}`).join(' / ')} grace a ${result.x2.card.name}.</span>
+                    <strong>${totalUses} x2 appliqué${totalUses > 1 ? 's' : ''}</strong>
+                    <span>${applications.map(application => `${application.target} +${application.bonus}`).join(' / ')} grâce à ${result.x2.card.name}.</span>
                 </div>
             `;
         }
@@ -727,7 +727,7 @@ class PokemonShotsApp {
             <div class="party-x2-result">
                 <div>
                     <strong>${result.x2.card.name} est sortie ${totalUses} fois: ${remainingUses} x2 restant${remainingUses > 1 ? 's' : ''}</strong>
-                    <span>${result.x2.decidedBy} choisit quel joueur double ses gorgees sur ce booster.</span>
+                    <span>${result.x2.decidedBy} choisit quel joueur double ses gorgées sur ce booster.</span>
                 </div>
                 <div class="party-x2-targets">
                     ${Object.entries(result.distribution).map(([username, drinks]) => `

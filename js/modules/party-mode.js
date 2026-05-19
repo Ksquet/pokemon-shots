@@ -231,7 +231,7 @@ function createPartyMode() {
             if (navList) {
                 navItem = document.createElement('li');
                 navItem.className = 'party-nav-item';
-                navItem.innerHTML = '<button type="button">Soiree</button>';
+                navItem.innerHTML = '<button type="button">Soirée</button>';
                 navList.appendChild(navItem);
                 navItem.querySelector('button').addEventListener('click', showPanel);
             }
@@ -585,8 +585,8 @@ function createPartyMode() {
             const debugBase = {
                 carte: card.name,
                 slot: card.DEBUG_ORDER || '-',
-                rarete: card.specialType || card.rarity || '-',
-                proprietaire: owner?.username || '-',
+                rareté: card.specialType || card.rarity || '-',
+                propriétaire: owner?.username || '-',
                 ouvreur: opener.username
             };
 
@@ -606,9 +606,9 @@ function createPartyMode() {
                 }
                 debugRows.push({
                     ...debugBase,
-                    raison: owner ? 'Carte possedee + bonus Reverse holo' : 'Reverse holo non possedee',
+                    raison: owner ? 'Carte possédée + bonus Reverse holo' : 'Reverse holo non possédée',
                     cible: owner?.username || '-',
-                    gorgees: drinks
+                    gorgées: drinks
                 });
                 return;
             }
@@ -626,9 +626,9 @@ function createPartyMode() {
                 }
                 debugRows.push({
                     ...debugBase,
-                    raison: 'Carte possedee',
+                    raison: 'Carte possédée',
                     cible: owner.username,
-                    gorgees: drinks
+                    gorgées: drinks
                 });
             }
 
@@ -647,9 +647,9 @@ function createPartyMode() {
 
                 debugRows.push({
                     ...debugBase,
-                    raison: owner ? 'Carte possedee + bonus rare/holo' : 'Rare/holo non possedee',
+                    raison: owner ? 'Carte possédée + bonus rare/holo' : 'Rare/holo non possédée',
                     cible: owner?.username || '-',
-                    gorgees: holoDrinks
+                    gorgées: holoDrinks
                 });
                 return;
             }
@@ -667,16 +667,16 @@ function createPartyMode() {
                     ...debugBase,
                     raison: 'Hit / holo',
                     cible: opener.username,
-                    gorgees: hitDrinks
+                    gorgées: hitDrinks
                 });
             }
 
             if (!owner && hitDrinks <= 0) {
                 debugRows.push({
                     ...debugBase,
-                    raison: 'Aucune gorgee',
+                    raison: 'Aucune gorgée',
                     cible: '-',
-                    gorgees: 0
+                    gorgées: 0
                 });
             }
         });
@@ -729,11 +729,11 @@ function createPartyMode() {
     }
 
     function logDrinkCalculation(boosterRecord, debugRows) {
-        console.groupCollapsed(`[Pokemon Shots] Calcul des gorgees - ${boosterRecord.opener}`);
+        console.groupCollapsed(`[Pokemon Shots] Calcul des gorgées - ${boosterRecord.opener}`);
         console.table(debugRows);
         console.log('Distribution finale:', boosterRecord.distribution);
         console.log('Evenements retenus:', boosterRecord.events);
-        console.log('Parametres utilises:', boosterRecord.settings.drinkValues);
+        console.log('Paramètres utilisés:', boosterRecord.settings.drinkValues);
         console.log('Carte x2:', boosterRecord.x2);
         console.log('Tout le monde boit:', boosterRecord.everyoneDrinks);
         console.groupEnd();
@@ -783,8 +783,8 @@ function createPartyMode() {
         return `
             <div class="party-header">
                 <div>
-                    <p>Mode Soiree</p>
-                    <h2>Pokemon Shots</h2>
+                    <p>Mode Soirée</p>
+                    <h2>Pokémon Shots</h2>
                 </div>
                 <button type="button" id="party-back">Retour</button>
             </div>
@@ -797,15 +797,15 @@ function createPartyMode() {
                                 <input type="checkbox" value="${user.username}">
                                 <span>${user.displayName || user.username}</span>
                             </label>
-                        `).join('') : '<p>Aucun utilisateur cree. Cree des usernames via Connexion.</p>'}
+                        `).join('') : '<p>Aucun utilisateur créé. Crée des usernames via Connexion.</p>'}
                     </div>
                 </section>
                 <section>
-                    <h3>Preparation</h3>
+                    <h3>Préparation</h3>
                     <label><input type="radio" name="party-mode" value="draft" checked> Draft manuel</label>
                     <label><input type="radio" name="party-mode" value="random"> Distribution random</label>
                     ${renderPartySettings(settings)}
-                    <button type="button" id="party-start">Lancer la soiree</button>
+                    <button type="button" id="party-start">Lancer la soirée</button>
                 </section>
             </div>
         `;
@@ -823,23 +823,23 @@ function createPartyMode() {
     function renderPartySettings(settings) {
         return `
             <details class="party-settings">
-                <summary>Parametres</summary>
+                <summary>Paramètres</summary>
                 <div class="party-settings-grid">
                     <section>
                         <h4>Pool de draft</h4>
                         ${renderSettingInput('commonRatio', 'Ratio communes', settings.poolRatios.common, 0.01, 0, 1)}
-                        ${renderSettingInput('uncommonRatio', 'Ratio uncommons', settings.poolRatios.uncommon, 0.01, 0, 1)}
+                        ${renderSettingInput('uncommonRatio', 'Ratio peu communes', settings.poolRatios.uncommon, 0.01, 0, 1)}
                         ${renderSettingInput('draftOptionCount', 'Choix par tour', settings.draftOptionCount, 1, 2, 12)}
                     </section>
                     <section>
                         <h4>Gorgees</h4>
-                        ${renderSettingInput('ownedCardDrinks', 'Carte possedee', settings.drinkValues.ownedCard)}
+                        ${renderSettingInput('ownedCardDrinks', 'Carte possédée', settings.drinkValues.ownedCard)}
                         ${renderSettingInput('holoDrinks', 'Bonus Holo standard', settings.drinkValues.holo)}
-                        ${renderSettingInput('reverseHoloDrinks', 'Bonus Reverse holo possedee', settings.drinkValues.reverseHolo)}
+                        ${renderSettingInput('reverseHoloDrinks', 'Bonus Reverse holo possédée', settings.drinkValues.reverseHolo)}
                         ${renderSettingInput('doubleRareDrinks', 'Double Rare', settings.drinkValues.doubleRare)}
                         ${renderSettingInput('ultraRareDrinks', 'Ultra Rare', settings.drinkValues.ultraRare)}
                         ${renderSettingInput('illustrationRareDrinks', 'Illustration Rare', settings.drinkValues.illustrationRare)}
-                        ${renderSettingInput('specialIllustrationRareDrinks', 'Special Illustration', settings.drinkValues.specialIllustrationRare)}
+                        ${renderSettingInput('specialIllustrationRareDrinks', 'Illustration Spéciale', settings.drinkValues.specialIllustrationRare)}
                         ${renderSettingInput('hyperRareDrinks', 'Hyper Rare', settings.drinkValues.hyperRare)}
                         ${renderSettingInput('fallbackHitDrinks', 'Autre hit', settings.drinkValues.fallbackHit)}
                     </section>
@@ -900,7 +900,7 @@ function createPartyMode() {
                     <h2>${player.username} choisit une carte</h2>
                     <span>${pickedText} cartes choisies</span>
                 </div>
-                <button type="button" id="party-stop">Arreter</button>
+                <button type="button" id="party-stop">Arrêter</button>
             </div>
             <div class="party-draft-grid">
                 ${draft.options.map(card => `
@@ -921,17 +921,17 @@ function createPartyMode() {
             <div class="party-header">
                 <div>
                     <p>Carte x2</p>
-                    <h2>Choisissez la carte qui double les gorgees</h2>
+                    <h2>Choisissez la carte qui double les gorgées</h2>
                     <span>${options.length} communes disponibles hors mains des joueurs</span>
                 </div>
-                <button type="button" id="party-stop">Arreter</button>
+                <button type="button" id="party-stop">Arrêter</button>
             </div>
             <section class="party-x2-intro">
                 <div>
-                    <strong>Si cette carte sort dans un booster, l'ouvreur choisira quel joueur voit ses gorgees doubler.</strong>
-                    <span>Le plus souvent c'est l'ouvreur, sauf si un autre joueur a plus a prendre.</span>
+                    <strong>Si cette carte sort dans un booster, l'ouvreur choisira quel joueur voit ses gorgées doubler.</strong>
+                    <span>Le plus souvent c'est l'ouvreur, sauf si un autre joueur a plus à prendre.</span>
                 </div>
-                <button type="button" id="party-x2-random">Choisir aleatoirement</button>
+                <button type="button" id="party-x2-random">Choisir aléatoirement</button>
             </section>
             <div class="party-draft-grid party-x2-grid">
                 ${options.map(card => `
@@ -968,7 +968,7 @@ function createPartyMode() {
                     <article class="${index === state.openerIndex && !state.draft ? 'is-opener' : ''}">
                         <strong>${player.username}</strong>
                         <span>${player.ownedCards.common.length} C / ${player.ownedCards.uncommon.length} U</span>
-                        <em>${player.drinkTotal} gorgees</em>
+                        <em>${player.drinkTotal} gorgées</em>
                     </article>
                 `).join('')}
             </div>
@@ -997,7 +997,7 @@ function createPartyMode() {
             <section class="party-collections">
                 <div class="party-section-header">
                     <div>
-                        <p>Verification</p>
+                        <p>Vérification</p>
                         <h3>Cartes des joueurs</h3>
                     </div>
                 </div>
@@ -1006,7 +1006,7 @@ function createPartyMode() {
                         <details class="party-player-collection">
                             <summary>
                                 <strong>${player.username}</strong>
-                                <span>${player.ownedCards.common.length} communes - ${player.ownedCards.uncommon.length} uncommons</span>
+                                <span>${player.ownedCards.common.length} communes - ${player.ownedCards.uncommon.length} peu communes</span>
                             </summary>
                             <div class="party-owned-section">
                                 <h4>Communes</h4>
@@ -1030,11 +1030,11 @@ function createPartyMode() {
 
         return `
             <section class="party-result">
-                <h3>Recap du dernier booster - ${state.lastResult.opener}</h3>
+                <h3>Récap du dernier booster - ${state.lastResult.opener}</h3>
                 ${state.lastResult.everyoneDrinks ? `
                     <div class="party-everyone-drinks">
                         <strong>Tout le monde boit !</strong>
-                        <span>Une gorgee pour chaque joueur.</span>
+                        <span>Une gorgée pour chaque joueur.</span>
                     </div>
                 ` : ''}
                 <div class="party-drink-grid">
@@ -1049,7 +1049,7 @@ function createPartyMode() {
                 <ul>
                     ${state.lastResult.events.length ? state.lastResult.events.map(event => `
                         <li>${event.username} distribue ${event.drinks} pour ${event.cardName}</li>
-                    `).join('') : '<li>Aucune gorgee sur ce booster.</li>'}
+                    `).join('') : '<li>Aucune gorgée sur ce booster.</li>'}
                 </ul>
             </section>
         `;
@@ -1070,8 +1070,8 @@ function createPartyMode() {
         if (!remainingUses) {
             return `
                 <div class="party-x2-result is-applied">
-                    <strong>${totalUses} x2 applique${totalUses > 1 ? 's' : ''}</strong>
-                    <span>${applications.map(application => `${application.target} +${application.bonus}`).join(' / ')} grace a ${result.x2.card.name}.</span>
+                    <strong>${totalUses} x2 appliqué${totalUses > 1 ? 's' : ''}</strong>
+                    <span>${applications.map(application => `${application.target} +${application.bonus}`).join(' / ')} grâce à ${result.x2.card.name}.</span>
                 </div>
             `;
         }
@@ -1080,7 +1080,7 @@ function createPartyMode() {
             <div class="party-x2-result">
                 <div>
                     <strong>${result.x2.card.name} est sortie ${totalUses} fois: ${remainingUses} x2 restant${remainingUses > 1 ? 's' : ''}</strong>
-                    <span>${result.x2.decidedBy} choisit quel joueur double ses gorgees sur ce booster.</span>
+                    <span>${result.x2.decidedBy} choisit quel joueur double ses gorgées sur ce booster.</span>
                 </div>
                 <div class="party-x2-targets">
                     ${Object.entries(result.distribution).map(([username, drinks]) => `
@@ -1105,7 +1105,7 @@ function createPartyMode() {
                 <div class="party-actions">
                     <button type="button" id="party-back">Retour aux boosters</button>
                     <button type="button" id="party-open-booster">Ouvrir le booster</button>
-                    <button type="button" id="party-stop">Arreter</button>
+                    <button type="button" id="party-stop">Arrêter</button>
                 </div>
             </div>
             ${renderPartyRoster()}
@@ -1147,7 +1147,7 @@ function createPartyMode() {
             const mode = panel.querySelector('input[name="party-mode"]:checked')?.value || 'draft';
             const settings = collectSettingsFromPanel();
             if (players.length < 2) {
-                alert('Selectionne au moins 2 joueurs.');
+                alert('Sélectionne au moins 2 joueurs.');
                 return;
             }
             startParty(players, mode, settings);

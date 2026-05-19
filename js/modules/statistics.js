@@ -6,7 +6,7 @@ const STAT_LABELS = {
     doubleRare: 'Double Rare',
     ultraRare: 'Ultra Rare',
     illustrationRare: 'Illustration Rare',
-    specialIllustrationRare: 'Special Illustration',
+    specialIllustrationRare: 'Illustration Spéciale',
     hyperRare: 'Hyper Rare'
 };
 
@@ -92,8 +92,8 @@ function updatePullRates(pullRates) {
                 <span class="pull-rate-current" style="width: ${actualWidth}%"></span>
             </div>
             <div class="pull-rate-meta">
-                <span>Theorie ${expectedPercent} (${data.expectedText})</span>
-                <span>Reel ${data.actualText}</span>
+                <span>Théorie ${expectedPercent} (${data.expectedText})</span>
+                <span>Réel ${data.actualText}</span>
             </div>
         `;
 
@@ -122,7 +122,7 @@ function renderPartyCardDetails(cards) {
 
 function renderBoosterHistory(history) {
     if (!history?.length) {
-        return '<p class="party-stats-empty">Aucun booster sauvegarde pour cette soiree.</p>';
+        return '<p class="party-stats-empty">Aucun booster sauvegardé pour cette soirée.</p>';
     }
 
     return history.map((booster, index) => `
@@ -183,7 +183,7 @@ function renderPartyPlayerPullStats(player) {
                                 <span class="pull-rate-expected" style="width: ${expectedWidth}%"></span>
                                 <span class="pull-rate-current" style="width: ${actualWidth}%"></span>
                             </div>
-                            <small>Theorie ${formatPercent(expectedRate)} - Reel ${count > 0 ? `1 sur ${Math.round(opened / count)}` : 'N/A'}</small>
+                            <small>Théorie ${formatPercent(expectedRate)} - Réel ${count > 0 ? `1 sur ${Math.round(opened / count)}` : 'N/A'}</small>
                         </article>
                     `;
                 }).join('')}
@@ -208,14 +208,14 @@ function updatePartyStats(summary) {
     section.innerHTML = `
         <div class="party-stats-header">
             <div>
-                <p class="stats-eyebrow">Soiree</p>
-                <h4>Recap Pokemon Shots</h4>
+                <p class="stats-eyebrow">Soirée</p>
+                <h4>Récap Pokémon Shots</h4>
             </div>
             <span>${summary.boostersOpened} booster${summary.boostersOpened > 1 ? 's' : ''}</span>
         </div>
         <div class="party-stats-overview">
             <article>
-                <span>Gorgees totales</span>
+                <span>Gorgées totales</span>
                 <strong>${summary.totalDrinks}</strong>
             </article>
             <article>
@@ -249,7 +249,7 @@ function updatePartyStats(summary) {
                         </div>
                     </dl>
                     <details class="party-player-card-details">
-                        <summary>Voir le detail du joueur</summary>
+                        <summary>Voir le détail du joueur</summary>
                         <div>
                             ${renderPartyPlayerPullStats(player)}
                             <h5>Communes</h5>
@@ -262,7 +262,7 @@ function updatePartyStats(summary) {
             `).join('')}
         </div>
         <details class="party-history-details">
-            <summary>Historique des boosters de la soiree</summary>
+            <summary>Historique des boosters de la soirée</summary>
             ${renderBoosterHistory(summary.boosterHistory)}
         </details>
     `;
@@ -275,7 +275,7 @@ function renderStatsPanel(panel) {
                 <p class="stats-eyebrow">Session</p>
                 <h3>Statistiques</h3>
             </div>
-            <button class="toggle-stats-panel" aria-label="Reduire ou agrandir le panneau de statistiques" aria-expanded="true">
+            <button class="toggle-stats-panel" aria-label="Réduire ou agrandir le panneau de statistiques" aria-expanded="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
@@ -303,7 +303,7 @@ function renderStatsPanel(panel) {
                 <div id="pull-rates-list" class="pull-rates-list"></div>
             </section>
 
-            <section id="party-stats-section" class="party-stats-section hidden" aria-label="Statistiques de la soiree"></section>
+            <section id="party-stats-section" class="party-stats-section hidden" aria-label="Statistiques de la soirée"></section>
         </div>
     `;
 }

@@ -418,7 +418,7 @@ function createAccountModule() {
             <form class="account-card" id="account-form">
                 <button class="account-close" type="button" aria-label="Fermer">&times;</button>
                 <h2>Connexion optionnelle</h2>
-                <p>Entre un nom d'utilisateur. S'il n'existe pas encore, il sera cree.</p>
+                <p>Entre un nom d'utilisateur. S'il n'existe pas encore, il sera créé.</p>
                 <div class="saved-users" id="saved-users"></div>
                 <label for="account-username">Nom d'utilisateur</label>
                 <input id="account-username" name="username" autocomplete="username" maxlength="20" required>
@@ -745,7 +745,7 @@ function createAccountModule() {
             doubleRare: 'Double Rare',
             ultraRare: 'Ultra Rare',
             illustrationRare: 'Illustration Rare',
-            specialIllustrationRare: 'Special Illustration',
+            specialIllustrationRare: 'Illustration Spéciale',
             hyperRare: 'Hyper Rare'
         };
 
@@ -765,7 +765,7 @@ function createAccountModule() {
                 <div class="admin-debug-booster-fields">
                     <label>
                         <span>Recherche</span>
-                        <input type="search" id="admin-debug-card-search" placeholder="Nom ou numero">
+                        <input type="search" id="admin-debug-card-search" placeholder="Nom ou numéro">
                     </label>
                     <label>
                         <span>Carte</span>
@@ -784,12 +784,12 @@ function createAccountModule() {
                             <option value="doubleRare">Double Rare</option>
                             <option value="ultraRare">Ultra Rare</option>
                             <option value="illustrationRare">Illustration Rare</option>
-                            <option value="specialIllustrationRare">Special Illustration</option>
+                            <option value="specialIllustrationRare">Illustration Spéciale</option>
                             <option value="hyperRare">Hyper Rare</option>
                         </select>
                     </label>
                     <label>
-                        <span>Quantite</span>
+                        <span>Quantité</span>
                         <input type="number" id="admin-debug-count" min="1" max="20" value="1">
                     </label>
                     <button class="reset-button" type="submit">Ajouter</button>
@@ -800,9 +800,9 @@ function createAccountModule() {
                             ${entries.map(entry => `<li>${getDebugBoosterEntryLabel(entry)}</li>`).join('')}
                         </ol>
                         <button type="button" id="admin-debug-clear">Vider le booster debug</button>
-                    ` : '<p class="admin-empty">Aucun booster debug prepare. Le prochain booster sera aleatoire.</p>'}
+                    ` : '<p class="admin-empty">Aucun booster debug préparé. Le prochain booster sera aléatoire.</p>'}
                 </div>
-                <p class="admin-reset-help">La liste ci-dessus remplace uniquement le prochain booster ouvert, puis elle est videe automatiquement.</p>
+                <p class="admin-reset-help">La liste ci-dessus remplace uniquement le prochain booster ouvert, puis elle est vidée automatiquement.</p>
             </form>
         `;
     }
@@ -914,7 +914,7 @@ function createAccountModule() {
                 <button type="button" id="collection-back-button">Retour aux boosters</button>
             </div>
             <div class="collection-summary">
-                <article><span>Cartes differentes</span><strong>${ownedUnique}/${allCards.length}</strong></article>
+                <article><span>Cartes différentes</span><strong>${ownedUnique}/${allCards.length}</strong></article>
                 <article><span>Exemplaires</span><strong>${ownedTotal}</strong></article>
             </div>
             <div class="collection-grid">
@@ -1032,7 +1032,7 @@ function createAccountModule() {
 
             if (startsAt && endsAt && startsAt > endsAt) {
                 if (status) {
-                    status.textContent = 'La date de debut doit etre avant la date de fin.';
+                    status.textContent = 'La date de début doit être avant la date de fin.';
                 }
                 return;
             }
@@ -1041,7 +1041,7 @@ function createAccountModule() {
 
             if (!matches.length) {
                 if (status) {
-                    status.textContent = 'Aucun booster ne correspond a ces filtres.';
+                    status.textContent = 'Aucun booster ne correspond à ces filtres.';
                 }
                 return;
             }
@@ -1057,7 +1057,7 @@ function createAccountModule() {
             const nextStatus = adminPanel?.querySelector('#admin-reset-status');
 
             if (nextStatus) {
-                nextStatus.textContent = `${result.removedBoosters} booster${result.removedBoosters > 1 ? 's retires' : ' retire'} des collections.`;
+                nextStatus.textContent = `${result.removedBoosters} booster${result.removedBoosters > 1 ? 's retirés' : ' retiré'} des collections.`;
             }
         });
     }
@@ -1070,12 +1070,12 @@ function createAccountModule() {
         return `
             <form class="admin-reset-panel admin-party-settings-panel" id="admin-party-settings-form">
                 <div>
-                    <p>Mode soiree</p>
-                    <h3>Parametres par defaut des futures soirees</h3>
+                    <p>Mode soirée</p>
+                    <h3>Paramètres par défaut des futures soirées</h3>
                 </div>
                 ${window.partyMode.renderSettings(window.partyMode.getDefaultSettings())}
                 <div class="admin-party-settings-actions">
-                    <button class="reset-button" type="submit">Sauvegarder les parametres par defaut</button>
+                    <button class="reset-button" type="submit">Sauvegarder les paramètres par défaut</button>
                     <p class="admin-reset-status" id="admin-party-settings-status" aria-live="polite"></p>
                 </div>
             </form>
@@ -1097,7 +1097,7 @@ function createAccountModule() {
 
             const status = form.querySelector('#admin-party-settings-status');
             if (status) {
-                status.textContent = 'Parametres sauvegardes pour les prochaines soirees.';
+                status.textContent = 'Paramètres sauvegardés pour les prochaines soirées.';
             }
         });
     }
@@ -1149,7 +1149,7 @@ function createAccountModule() {
                         <button type="button" id="admin-reset-clear-users">Aucun</button>
                     </div>
                     <div class="admin-reset-user-grid">
-                        ${getAdminResetUserOptions(db) || '<p class="admin-empty">Aucune collection a reset.</p>'}
+                        ${getAdminResetUserOptions(db) || '<p class="admin-empty">Aucune collection à reset.</p>'}
                     </div>
                 </div>
                 <div class="admin-reset-dates">
@@ -1161,9 +1161,9 @@ function createAccountModule() {
                         <span>Jusqu'au</span>
                         <input type="date" id="admin-reset-end">
                     </label>
-                    <button class="reset-button" type="submit">Reset les collections ciblees</button>
+                    <button class="reset-button" type="submit">Reset les collections ciblées</button>
                 </div>
-                <p class="admin-reset-help">Sans utilisateur coche, le reset vise tout le monde. Sans dates, il vise tout l'historique.</p>
+                <p class="admin-reset-help">Sans utilisateur coché, le reset vise tout le monde. Sans dates, il vise tout l'historique.</p>
                 <p class="admin-reset-status" id="admin-reset-status" aria-live="polite"></p>
             </form>
             <div class="admin-history">
