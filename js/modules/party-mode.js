@@ -173,7 +173,12 @@ function createPartyMode() {
             state.boosterHistory = state.lastResult ? [state.lastResult] : [];
         }
 
+        if (state.boosterHistory.length) {
+            state.lastResult = state.boosterHistory[state.boosterHistory.length - 1];
+        }
+
         state.settings = normalizeSettings(state.settings);
+        state.x2Selection ||= null;
 
         recalculatePlayerStatsFromHistory();
     }
@@ -292,6 +297,8 @@ function createPartyMode() {
             })),
             openerIndex: 0,
             draft: null,
+            x2Selection: null,
+            x2Card: null,
             lastResult: null,
             boostersOpened: 0,
             boosterHistory: [],
@@ -305,6 +312,7 @@ function createPartyMode() {
         if (mode === 'random') {
             distributeRandom('common');
             distributeRandom('uncommon');
+            startX2Selection();
         } else {
             startDraft('common');
         }
@@ -326,6 +334,38 @@ function createPartyMode() {
         });
     }
 
+    function getUnassignedCommonCards() {
+        const assignedKeys = getAssignedKeys('common');
+        return getPool('common').filter(card => !assignedKeys.has(card.key));
+    }
+
+    function startX2Selection() {
+        const options = getUnassignedCommonCards();
+        state.draft = null;
+        state.x2Selection = options.length ? { options } : null;
+        state.x2Card = null;
+    }
+
+    function pickX2Card(cardKey) {
+        if (!state?.x2Selection) {
+            return;
+        }
+
+        const options = state.x2Selection.options || [];
+        const card = cardKey === 'random'
+            ? shuffle(options)[0]
+            : options.find(option => option.key === cardKey);
+
+        if (!card) {
+            return;
+        }
+
+        state.x2Card = card;
+        state.x2Selection = null;
+        savePartyState();
+        render();
+    }
+
     function startDraft(rarityType) {
         const target = getTargetPickCount(rarityType, state.players.length);
 
@@ -333,7 +373,7 @@ function createPartyMode() {
             if (rarityType === 'common') {
                 startDraft('uncommon');
             } else {
-                state.draft = null;
+                startX2Selection();
             }
             return;
         }
@@ -374,9 +414,14 @@ function createPartyMode() {
     function pickDraftCard(cardKey) {
         const draft = state.draft;
         const player = getCurrentDrafter();
+
+        if (!draft || !player) {
+            return;
+        }
+
         const cardIndex = draft.options.findIndex(card => card.key === cardKey);
 
-        if (!draft || !player || cardIndex < 0) {
+        if (cardIndex < 0) {
             return;
         }
 
@@ -389,7 +434,7 @@ function createPartyMode() {
             if (draft.rarityType === 'common') {
                 startDraft('uncommon');
             } else {
-                state.draft = null;
+                startX2Selection();
             }
         } else if (draft.turnIndex >= draft.roundOrder.length || draft.options.length === 0) {
             draft.round++;
@@ -451,8 +496,82 @@ function createPartyMode() {
         return 0;
     }
 
+    function isStandardFoilCard(card) {
+        return Boolean(card.isFoil && !card.isReverseHolo && !card.specialType && !card.isDoubleRare);
+    }
+
+    function getX2CardsInBooster(boosterCards) {
+        if (!state?.x2Card) {
+            return [];
+        }
+
+        return boosterCards.filter(card => getCardKey(card) === state.x2Card.key);
+    }
+
+    function hasPendingX2(result = state?.lastResult) {
+        if (!result?.x2?.available || result.x2.skipped) {
+            return false;
+        }
+
+        const totalUses = result.x2.count || 1;
+        const usedCount = result.x2.applications?.length || (result.x2.applied ? 1 : 0);
+        return usedCount < totalUses;
+    }
+
+    function recomputeEveryoneDrinks(distribution) {
+        return state.players.length > 0
+            && state.players.every(player => distribution[player.username] === 1);
+    }
+
+    function applyX2Target(username) {
+        if (!state?.active || !hasPendingX2()) {
+            return state?.lastResult || null;
+        }
+
+        const result = state.lastResult;
+        const normalizedUsername = username || '';
+        const targetExists = state.players.some(player => player.username === normalizedUsername);
+
+        if (!targetExists) {
+            return result;
+        }
+
+        const bonus = result.distribution[normalizedUsername] || 0;
+        result.distribution[normalizedUsername] += bonus;
+        result.everyoneDrinks = recomputeEveryoneDrinks(result.distribution);
+        const applications = result.x2.applications || [];
+        applications.push({
+            target: normalizedUsername,
+            bonus
+        });
+
+        result.x2 = {
+            ...result.x2,
+            applied: applications.length >= (result.x2.count || 1),
+            target: normalizedUsername,
+            bonus,
+            applications
+        };
+        result.events.push({
+            type: 'x2',
+            username: normalizedUsername,
+            drinks: bonus,
+            cardName: result.x2.card.name
+        });
+
+        const historyIndex = state.boosterHistory.findIndex(booster => booster.openedAt === result.openedAt);
+        if (historyIndex >= 0) {
+            state.boosterHistory[historyIndex] = result;
+        }
+
+        recalculatePlayerStatsFromHistory();
+        savePartyState();
+        render();
+        return result;
+    }
+
     function scoreBooster(boosterCards) {
-        if (!state?.active || state.draft) {
+        if (!state?.active || state.draft || state.x2Selection) {
             return null;
         }
 
@@ -513,6 +632,28 @@ function createPartyMode() {
                 });
             }
 
+            if (isStandardFoilCard(card)) {
+                const holoDrinks = owner ? getHitDrinkValue(card) : 0;
+
+                if (owner && holoDrinks > 0) {
+                    distribution[owner.username] += holoDrinks;
+                    events.push({
+                        type: 'owned-holo',
+                        username: owner.username,
+                        drinks: holoDrinks,
+                        cardName: card.name
+                    });
+                }
+
+                debugRows.push({
+                    ...debugBase,
+                    raison: owner ? 'Carte possedee + bonus rare/holo' : 'Rare/holo non possedee',
+                    cible: owner?.username || '-',
+                    gorgees: holoDrinks
+                });
+                return;
+            }
+
             const hitDrinks = getHitDrinkValue(card);
             if (hitDrinks > 0) {
                 distribution[opener.username] += hitDrinks;
@@ -540,9 +681,9 @@ function createPartyMode() {
             }
         });
 
-        const everyoneDrinks = state.players.length > 0
-            && state.players.every(player => distribution[player.username] === 1);
+        const everyoneDrinks = recomputeEveryoneDrinks(distribution);
         const nextOpener = state.players[(state.openerIndex + 1) % state.players.length];
+        const x2CardsInBooster = getX2CardsInBooster(boosterCards);
 
         const boosterRecord = {
             opener: opener.username,
@@ -550,6 +691,20 @@ function createPartyMode() {
             distribution,
             events,
             everyoneDrinks,
+            x2: x2CardsInBooster.length ? {
+                available: true,
+                applied: false,
+                skipped: false,
+                count: x2CardsInBooster.length,
+                target: null,
+                bonus: 0,
+                applications: [],
+                decidedBy: opener.username,
+                card: {
+                    ...state.x2Card,
+                    pulledCardName: x2CardsInBooster[0].name
+                }
+            } : null,
             settings: getSettings(),
             cards: boosterCards.map(card => ({
                 ...getCardLite(card),
@@ -579,12 +734,13 @@ function createPartyMode() {
         console.log('Distribution finale:', boosterRecord.distribution);
         console.log('Evenements retenus:', boosterRecord.events);
         console.log('Parametres utilises:', boosterRecord.settings.drinkValues);
+        console.log('Carte x2:', boosterRecord.x2);
         console.log('Tout le monde boit:', boosterRecord.everyoneDrinks);
         console.groupEnd();
     }
 
     function getSummary() {
-        if (!state?.active || state.draft) {
+        if (!state?.active || state.draft || state.x2Selection) {
             return null;
         }
 
@@ -616,6 +772,7 @@ function createPartyMode() {
             lastResult: state.lastResult,
             topPlayer,
             boosterHistory: history,
+            x2Card: state.x2Card,
             players
         };
     }
@@ -757,6 +914,53 @@ function createPartyMode() {
         `;
     }
 
+    function renderX2Selection() {
+        const options = state.x2Selection?.options || [];
+
+        return `
+            <div class="party-header">
+                <div>
+                    <p>Carte x2</p>
+                    <h2>Choisissez la carte qui double les gorgees</h2>
+                    <span>${options.length} communes disponibles hors mains des joueurs</span>
+                </div>
+                <button type="button" id="party-stop">Arreter</button>
+            </div>
+            <section class="party-x2-intro">
+                <div>
+                    <strong>Si cette carte sort dans un booster, l'ouvreur choisira quel joueur voit ses gorgees doubler.</strong>
+                    <span>Le plus souvent c'est l'ouvreur, sauf si un autre joueur a plus a prendre.</span>
+                </div>
+                <button type="button" id="party-x2-random">Choisir aleatoirement</button>
+            </section>
+            <div class="party-draft-grid party-x2-grid">
+                ${options.map(card => `
+                    <button type="button" class="party-draft-card party-x2-card" data-x2-card-key="${card.key}">
+                        <img src="${card.imageUrl || `assets/images/cards/151/${card.id}.jpg`}" alt="${card.name}">
+                        <span>${card.name}</span>
+                    </button>
+                `).join('')}
+            </div>
+            ${renderPartyRoster()}
+        `;
+    }
+
+    function renderX2ActiveCard() {
+        if (!state.x2Card) {
+            return '';
+        }
+
+        return `
+            <section class="party-x2-active">
+                <div>
+                    <span>Carte x2</span>
+                    <strong>${state.x2Card.name}</strong>
+                </div>
+                <img src="${state.x2Card.imageUrl || `assets/images/cards/151/${state.x2Card.id}.jpg`}" alt="${state.x2Card.name}">
+            </section>
+        `;
+    }
+
     function renderPartyRoster() {
         return `
             <div class="party-roster">
@@ -841,12 +1045,52 @@ function createPartyMode() {
                         </article>
                     `).join('')}
                 </div>
+                ${renderX2ResultControls(state.lastResult)}
                 <ul>
                     ${state.lastResult.events.length ? state.lastResult.events.map(event => `
                         <li>${event.username} distribue ${event.drinks} pour ${event.cardName}</li>
                     `).join('') : '<li>Aucune gorgee sur ce booster.</li>'}
                 </ul>
             </section>
+        `;
+    }
+
+    function renderX2ResultControls(result) {
+        if (!result.x2?.available) {
+            return '';
+        }
+
+        const totalUses = result.x2.count || 1;
+        const applications = result.x2.applications || (result.x2.applied ? [{
+            target: result.x2.target,
+            bonus: result.x2.bonus || 0
+        }] : []);
+        const remainingUses = Math.max(0, totalUses - applications.length);
+
+        if (!remainingUses) {
+            return `
+                <div class="party-x2-result is-applied">
+                    <strong>${totalUses} x2 applique${totalUses > 1 ? 's' : ''}</strong>
+                    <span>${applications.map(application => `${application.target} +${application.bonus}`).join(' / ')} grace a ${result.x2.card.name}.</span>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="party-x2-result">
+                <div>
+                    <strong>${result.x2.card.name} est sortie ${totalUses} fois: ${remainingUses} x2 restant${remainingUses > 1 ? 's' : ''}</strong>
+                    <span>${result.x2.decidedBy} choisit quel joueur double ses gorgees sur ce booster.</span>
+                </div>
+                <div class="party-x2-targets">
+                    ${Object.entries(result.distribution).map(([username, drinks]) => `
+                        <button type="button" class="party-x2-target" data-x2-target="${username}">
+                            <span>${username}</span>
+                            <strong>${drinks} -> ${drinks * 2}</strong>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
         `;
     }
 
@@ -865,6 +1109,7 @@ function createPartyMode() {
                 </div>
             </div>
             ${renderPartyRoster()}
+            ${renderX2ActiveCard()}
             ${renderActivePartySettings()}
             ${renderPlayerCollections()}
             ${renderLastResult()}
@@ -881,6 +1126,8 @@ function createPartyMode() {
             panel.innerHTML = renderSetup();
         } else if (state.draft) {
             panel.innerHTML = renderDraft();
+        } else if (state.x2Selection) {
+            panel.innerHTML = renderX2Selection();
         } else {
             panel.innerHTML = renderGame();
         }
@@ -905,8 +1152,15 @@ function createPartyMode() {
             }
             startParty(players, mode, settings);
         });
-        panel.querySelectorAll('.party-draft-card').forEach(button => {
+        panel.querySelectorAll('.party-draft-card[data-card-key]').forEach(button => {
             button.addEventListener('click', () => pickDraftCard(button.dataset.cardKey));
+        });
+        panel.querySelector('#party-x2-random')?.addEventListener('click', () => pickX2Card('random'));
+        panel.querySelectorAll('.party-x2-card').forEach(button => {
+            button.addEventListener('click', () => pickX2Card(button.dataset.x2CardKey));
+        });
+        panel.querySelectorAll('.party-x2-target').forEach(button => {
+            button.addEventListener('click', () => applyX2Target(button.dataset.x2Target));
         });
         panel.querySelector('#party-save-settings')?.addEventListener('click', () => {
             if (!state) {
@@ -932,13 +1186,16 @@ function createPartyMode() {
 
     return {
         init,
-        isActive: () => Boolean(state?.active && !state.draft),
-        getCardOwner: (card) => state?.active && !state.draft ? getOwnerForCard(card) : null,
-        getCurrentOpener: () => state?.active && !state.draft ? state.players[state.openerIndex] : null,
+        isActive: () => Boolean(state?.active && !state.draft && !state.x2Selection),
+        getCardOwner: (card) => state?.active && !state.draft && !state.x2Selection ? getOwnerForCard(card) : null,
+        getCurrentOpener: () => state?.active && !state.draft && !state.x2Selection ? state.players[state.openerIndex] : null,
         getDefaultSettings: loadDefaultSettings,
         saveDefaultSettings,
         renderSettings: (settings) => renderPartySettings(normalizeSettings(settings)),
         collectSettings: (root) => collectSettingsFromRoot(root, loadDefaultSettings()),
+        applyX2Target,
+        hasPendingX2,
+        isX2Card: (card) => Boolean(state?.x2Card && getCardKey(card) === state.x2Card.key),
         getSummary,
         scoreBooster
     };

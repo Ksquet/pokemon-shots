@@ -472,6 +472,34 @@ h2 {
     opacity: 1;
 }
 
+.party-x2-card-badge {
+    position: absolute;
+    left: 0.45rem;
+    top: 0.45rem;
+    z-index: 4;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    border-radius: 999px;
+    background: #ffb000;
+    box-shadow: 0 0 0 3px rgba(255, 176, 0, 0.22), 0 8px 18px rgba(0, 0, 0, 0.24);
+    color: #2b1600;
+    font-size: 0.9rem;
+    font-weight: 900;
+    line-height: 1;
+    opacity: 0;
+    padding: 0.42rem 0.5rem;
+    text-transform: uppercase;
+    transform: rotate(-8deg) scale(0.92);
+}
+
+.card.revealed .party-x2-card-badge {
+    opacity: 1;
+    transform: rotate(-8deg) scale(1);
+}
+
+.party-x2-pulled-card {
+    box-shadow: 0 0 0 3px rgba(255, 176, 0, 0.45), 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
 .buttons-container {
     display: flex;
     justify-content: center;
@@ -1209,6 +1237,54 @@ h2 {
     margin: 0;
 }
 
+.admin-debug-booster-fields {
+    display: grid;
+    grid-template-columns: minmax(10rem, 0.75fr) minmax(13rem, 1fr) minmax(10rem, 0.6fr) minmax(6rem, 0.25fr) auto;
+    align-items: end;
+    gap: 0.65rem;
+}
+
+.admin-debug-booster-fields label {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.admin-debug-booster-fields select,
+.admin-debug-booster-fields input {
+    min-height: 2.35rem;
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    border-radius: 6px;
+    background: white;
+    padding: 0.45rem 0.55rem;
+}
+
+.admin-debug-booster-next {
+    border-radius: 8px;
+    background: #f6f7fb;
+    padding: 0.8rem;
+}
+
+.admin-debug-booster-next ol {
+    margin: 0 0 0.75rem 1.2rem;
+    padding: 0;
+}
+
+.admin-debug-booster-next li {
+    margin: 0.2rem 0;
+    color: var(--text-color);
+    font-weight: 800;
+}
+
+.admin-debug-booster-next button {
+    border: 0;
+    border-radius: 999px;
+    background: #222;
+    color: white;
+    cursor: pointer;
+    font-weight: 800;
+    padding: 0.55rem 0.8rem;
+}
+
 .admin-reset-help,
 .admin-reset-status {
     margin: 0;
@@ -1633,6 +1709,90 @@ nav li button:hover {
     border-radius: 6px;
 }
 
+.party-x2-intro,
+.party-x2-active,
+.party-x2-result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-radius: 8px;
+    background: #fff7e8;
+    color: var(--text-color);
+    padding: 1rem;
+}
+
+.party-x2-intro strong,
+.party-x2-active strong,
+.party-x2-result strong {
+    display: block;
+    color: var(--primary-color);
+}
+
+.party-x2-intro span,
+.party-x2-active span,
+.party-x2-result span {
+    display: block;
+    margin-top: 0.2rem;
+    color: #666;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.party-x2-intro button {
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 999px;
+    background: var(--secondary-color);
+    color: white;
+    cursor: pointer;
+    font-weight: 800;
+    padding: 0.75rem 1rem;
+}
+
+.party-x2-grid {
+    margin-top: 0.9rem;
+}
+
+.party-x2-active {
+    justify-content: start;
+    background: #eef2ff;
+}
+
+.party-x2-active img {
+    width: 4.5rem;
+    border-radius: 6px;
+}
+
+.party-x2-result {
+    display: grid;
+    background: #fff7e8;
+}
+
+.party-x2-result.is-applied {
+    background: #eefbf3;
+}
+
+.party-x2-targets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.55rem;
+}
+
+.party-x2-target {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    padding: 0.7rem;
+    text-align: left;
+}
+
+.party-x2-target strong {
+    color: var(--secondary-color);
+    font-size: 1rem;
+}
+
 .party-roster,
 .party-drink-grid {
     display: grid;
@@ -1984,6 +2144,10 @@ footer {
     .admin-dashboard-header {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .admin-debug-booster-fields {
+        grid-template-columns: 1fr;
     }
 
     .admin-card-list li {

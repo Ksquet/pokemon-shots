@@ -373,8 +373,8 @@ class PokemonShotsApp {
             return;
         }
         
-        // Générer un nouveau booster
-        const booster = this.boosterOpener.generateBooster();
+        // Générer un nouveau booster, ou consommer le booster debug préparé par l'admin.
+        const booster = window.accounts?.consumeDebugNextBooster?.(this.boosterOpener) || this.boosterOpener.generateBooster();
         this.currentBoosterData = booster;
         this.currentBoosterPartyScored = false;
         const collectionOwner = window.partyMode?.isActive()
@@ -391,6 +391,7 @@ class PokemonShotsApp {
         // Créer et ajouter les cartes au DOM
         this.currentBoosterCards = renderBoosterCards(booster, null);
         this.applyPartyOwnershipBadges(booster, this.currentBoosterCards);
+        this.applyPartyX2Badges(booster, this.currentBoosterCards);
         this.currentCardIndex = 0;
         this.currentBoosterImagesReady = this.preloadBoosterImages(this.currentBoosterCards);
         this.displayedStats.opened++;
@@ -428,6 +429,30 @@ class PokemonShotsApp {
             badge.className = 'party-card-owner-badge';
             badge.textContent = owner.username;
             badge.title = `${owner.username} possede cette carte`;
+            cardElement.appendChild(badge);
+        });
+    }
+
+    applyPartyX2Badges(booster, cardElements) {
+        if (!window.partyMode?.isActive()) {
+            return;
+        }
+
+        booster.forEach((card, index) => {
+            if (!window.partyMode.isX2Card?.(card)) {
+                return;
+            }
+
+            const cardElement = cardElements[index];
+            if (!cardElement) {
+                return;
+            }
+
+            cardElement.classList.add('party-x2-pulled-card');
+            const badge = document.createElement('span');
+            badge.className = 'party-x2-card-badge';
+            badge.textContent = 'x2';
+            badge.title = 'Carte x2 de la soiree';
             cardElement.appendChild(badge);
         });
     }
@@ -599,9 +624,16 @@ class PokemonShotsApp {
             return;
         }
 
+        document.querySelector('.party-inline-result')?.remove();
         const resultElement = document.createElement('section');
         resultElement.className = 'party-inline-result';
-        resultElement.innerHTML = `
+        resultElement.innerHTML = this.getPartyResultSummaryMarkup(result);
+        this.elements.cardsContainer.before(resultElement);
+        this.bindPartyX2ResultControls(resultElement);
+    }
+
+    getPartyResultSummaryMarkup(result) {
+        return `
             <div class="party-inline-header">
                 <div class="is-current-opener">
                     <span>Booster ouvert par</span>
@@ -627,8 +659,57 @@ class PokemonShotsApp {
                     </article>
                 `).join('')}
             </div>
+            ${this.getPartyX2ResultMarkup(result)}
         `;
-        this.elements.cardsContainer.before(resultElement);
+    }
+
+    getPartyX2ResultMarkup(result) {
+        if (!result.x2?.available) {
+            return '';
+        }
+
+        const totalUses = result.x2.count || 1;
+        const applications = result.x2.applications || (result.x2.applied ? [{
+            target: result.x2.target,
+            bonus: result.x2.bonus || 0
+        }] : []);
+        const remainingUses = Math.max(0, totalUses - applications.length);
+
+        if (!remainingUses) {
+            return `
+                <div class="party-x2-result is-applied">
+                    <strong>${totalUses} x2 applique${totalUses > 1 ? 's' : ''}</strong>
+                    <span>${applications.map(application => `${application.target} +${application.bonus}`).join(' / ')} grace a ${result.x2.card.name}.</span>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="party-x2-result">
+                <div>
+                    <strong>${result.x2.card.name} est sortie ${totalUses} fois: ${remainingUses} x2 restant${remainingUses > 1 ? 's' : ''}</strong>
+                    <span>${result.x2.decidedBy} choisit quel joueur double ses gorgees sur ce booster.</span>
+                </div>
+                <div class="party-x2-targets">
+                    ${Object.entries(result.distribution).map(([username, drinks]) => `
+                        <button type="button" class="party-x2-target" data-x2-target="${username}">
+                            <span>${username}</span>
+                            <strong>${drinks} -> ${drinks * 2}</strong>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    bindPartyX2ResultControls(resultElement) {
+        resultElement.querySelectorAll('.party-x2-target').forEach(button => {
+            button.addEventListener('click', () => {
+                const updatedResult = window.partyMode?.applyX2Target?.(button.dataset.x2Target);
+                this.renderPartyResultInSummary(updatedResult);
+                this.showStatsAfterSummary();
+            });
+        });
     }
 
     recordDisplayedCardStats(cardElement) {

@@ -14,6 +14,13 @@ function normalizeUsername(username) {
     return String(username || '').trim().toLowerCase();
 }
 
+function normalizeSearchText(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+}
+
 function createDefaultAccountDb() {
     return {
         users: [
@@ -25,7 +32,8 @@ function createDefaultAccountDb() {
             }
         ],
         boosters: [],
-        collections: {}
+        collections: {},
+        debugNextBooster: []
     };
 }
 
@@ -42,6 +50,7 @@ function loadAccountDb() {
         db.users = Array.isArray(db.users) ? db.users : [];
         db.boosters = Array.isArray(db.boosters) ? db.boosters : [];
         db.collections = db.collections && typeof db.collections === 'object' ? db.collections : {};
+        db.debugNextBooster = Array.isArray(db.debugNextBooster) ? db.debugNextBooster : [];
 
         if (!db.users.some(user => user.username === ADMIN_USERNAME)) {
             db.users.unshift({
@@ -654,6 +663,201 @@ function createAccountModule() {
         });
     }
 
+    function getCardByKey(cardKey) {
+        return getAllSetCards().find(card => getCardKey(card) === String(cardKey)) || null;
+    }
+
+    function applyDebugVariant(card, variant) {
+        const copy = JSON.parse(JSON.stringify(card));
+
+        if (variant === 'reverseHolo') {
+            copy.isFoil = true;
+            copy.isReverseHolo = true;
+        } else if (variant === 'holo') {
+            copy.isFoil = true;
+        } else if (variant && variant !== 'normal') {
+            copy.isFoil = true;
+            copy.specialType = variant;
+            if (variant === 'doubleRare') {
+                copy.isDoubleRare = true;
+            }
+        }
+
+        return copy;
+    }
+
+    function getBoosterTargetSize() {
+        const structure = window.BoosterOpener?.BOOSTER_STRUCTURE || {};
+        return Object.values(structure).reduce((total, value) => total + (Number(value) || 0), 0) || 11;
+    }
+
+    function consumeDebugNextBooster(boosterOpener = null) {
+        const db = loadAccountDb();
+        const entries = Array.isArray(db.debugNextBooster) ? db.debugNextBooster : [];
+
+        if (!entries.length) {
+            return null;
+        }
+
+        const booster = [];
+        entries.forEach(entry => {
+            const card = getCardByKey(entry.cardKey);
+            const count = Math.max(1, Math.min(20, Number(entry.count) || 1));
+
+            if (!card) {
+                return;
+            }
+
+            for (let index = 0; index < count; index++) {
+                booster.push({
+                    ...applyDebugVariant(card, entry.variant || 'normal'),
+                    DEBUG_ORDER: `DBG${booster.length + 1}`
+                });
+            }
+        });
+
+        const targetSize = getBoosterTargetSize();
+        if (booster.length > 0 && booster.length < targetSize && typeof boosterOpener?.generateBooster === 'function') {
+            const fillerCards = boosterOpener.generateBooster();
+            const missingCount = targetSize - booster.length;
+
+            fillerCards.slice(0, missingCount).forEach(card => {
+                booster.push({
+                    ...card,
+                    DEBUG_ORDER: `AUTO${booster.length + 1}`
+                });
+            });
+        }
+
+        db.debugNextBooster = [];
+        saveAccountDb(db);
+        renderAdminPanel();
+
+        return booster.length ? booster : null;
+    }
+
+    function getDebugBoosterEntryLabel(entry) {
+        const card = getCardByKey(entry.cardKey);
+        const variantLabels = {
+            normal: 'normale',
+            reverseHolo: 'reverse holo',
+            holo: 'holo',
+            doubleRare: 'Double Rare',
+            ultraRare: 'Ultra Rare',
+            illustrationRare: 'Illustration Rare',
+            specialIllustrationRare: 'Special Illustration',
+            hyperRare: 'Hyper Rare'
+        };
+
+        return `${entry.count || 1}x ${card?.name || 'Carte inconnue'} (${variantLabels[entry.variant] || 'normale'})`;
+    }
+
+    function renderAdminDebugBooster(db) {
+        const cards = getAllSetCards();
+        const entries = Array.isArray(db.debugNextBooster) ? db.debugNextBooster : [];
+
+        return `
+            <form class="admin-reset-panel admin-debug-booster-panel" id="admin-debug-booster-form">
+                <div>
+                    <p>Debug</p>
+                    <h3>Composer le prochain booster</h3>
+                </div>
+                <div class="admin-debug-booster-fields">
+                    <label>
+                        <span>Recherche</span>
+                        <input type="search" id="admin-debug-card-search" placeholder="Nom ou numero">
+                    </label>
+                    <label>
+                        <span>Carte</span>
+                        <select id="admin-debug-card">
+                            ${cards.map(card => `
+                                <option value="${getCardKey(card)}" data-search="${normalizeSearchText(`${card.localId || ''} ${card.number || ''} ${card.name || ''}`)}">${card.localId || card.number || ''} - ${card.name}</option>
+                            `).join('')}
+                        </select>
+                    </label>
+                    <label>
+                        <span>Variante</span>
+                        <select id="admin-debug-variant">
+                            <option value="normal">Normale</option>
+                            <option value="reverseHolo">Reverse holo</option>
+                            <option value="holo">Holo rare</option>
+                            <option value="doubleRare">Double Rare</option>
+                            <option value="ultraRare">Ultra Rare</option>
+                            <option value="illustrationRare">Illustration Rare</option>
+                            <option value="specialIllustrationRare">Special Illustration</option>
+                            <option value="hyperRare">Hyper Rare</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Quantite</span>
+                        <input type="number" id="admin-debug-count" min="1" max="20" value="1">
+                    </label>
+                    <button class="reset-button" type="submit">Ajouter</button>
+                </div>
+                <div class="admin-debug-booster-next">
+                    ${entries.length ? `
+                        <ol>
+                            ${entries.map(entry => `<li>${getDebugBoosterEntryLabel(entry)}</li>`).join('')}
+                        </ol>
+                        <button type="button" id="admin-debug-clear">Vider le booster debug</button>
+                    ` : '<p class="admin-empty">Aucun booster debug prepare. Le prochain booster sera aleatoire.</p>'}
+                </div>
+                <p class="admin-reset-help">La liste ci-dessus remplace uniquement le prochain booster ouvert, puis elle est videe automatiquement.</p>
+            </form>
+        `;
+    }
+
+    function bindAdminDebugBoosterForm() {
+        const form = adminPanel?.querySelector('#admin-debug-booster-form');
+
+        if (!form) {
+            return;
+        }
+
+        const searchInput = form.querySelector('#admin-debug-card-search');
+        const cardSelect = form.querySelector('#admin-debug-card');
+        const filterCardOptions = () => {
+            const query = normalizeSearchText(searchInput?.value).trim();
+            let firstVisibleOption = null;
+
+            cardSelect?.querySelectorAll('option').forEach(option => {
+                const matches = !query || option.dataset.search.includes(query);
+                option.hidden = !matches;
+
+                if (matches && !firstVisibleOption) {
+                    firstVisibleOption = option;
+                }
+            });
+
+            if (cardSelect?.selectedOptions[0]?.hidden && firstVisibleOption) {
+                cardSelect.value = firstVisibleOption.value;
+            }
+        };
+
+        searchInput?.addEventListener('input', filterCardOptions);
+
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+
+            const db = loadAccountDb();
+            db.debugNextBooster ||= [];
+            db.debugNextBooster.push({
+                cardKey: form.querySelector('#admin-debug-card')?.value || '',
+                variant: form.querySelector('#admin-debug-variant')?.value || 'normal',
+                count: Math.max(1, Math.min(20, Number(form.querySelector('#admin-debug-count')?.value) || 1))
+            });
+            saveAccountDb(db);
+            renderAdminPanel();
+        });
+
+        form.querySelector('#admin-debug-clear')?.addEventListener('click', () => {
+            const db = loadAccountDb();
+            db.debugNextBooster = [];
+            saveAccountDb(db);
+            renderAdminPanel();
+        });
+    }
+
     function renderCollectionCard(card, collection) {
         const key = getCardKey(card);
         const owned = collection[key];
@@ -932,6 +1136,7 @@ function createAccountModule() {
                 <article><span>Hits</span><strong>${summary.hits}</strong></article>
             </div>
             ${renderAdminPartySettings()}
+            ${renderAdminDebugBooster(db)}
             <form class="admin-reset-panel" id="admin-reset-form">
                 <div>
                     <p>Reset collections</p>
@@ -968,6 +1173,7 @@ function createAccountModule() {
 
         adminPanel.querySelector('#admin-back-button')?.addEventListener('click', showBoosterView);
         bindAdminPartySettingsForm();
+        bindAdminDebugBoosterForm();
         bindAdminResetForm(db);
     }
 
@@ -996,6 +1202,7 @@ function createAccountModule() {
         createOrLogin,
         logout,
         recordBooster,
+        consumeDebugNextBooster,
         resetCollections
     };
 }
