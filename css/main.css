@@ -1,13 +1,25 @@
 /* Variables CSS */
 :root {
-    --primary-color: #ff3e3e;
-    --secondary-color: #3e66ff;
-    --background-color: #f5f5f5;
+    --primary-color: #e3352f;
+    --secondary-color: #2f67d8;
+    --accent-color: #ffcb05;
+    --accent-dark: #c99200;
+    --ink-color: #243043;
+    --muted-color: #667085;
+    --line-color: #d9e2f1;
+    --panel-color: #ffffff;
+    --soft-panel: #f7faff;
+    --background-color: #eef4ff;
     --card-background: #ffffff;
-    --text-color: #333333;
+    --text-color: #243043;
     --header-height: 70px;
     --footer-height: 60px;
     --border-radius: 8px;
+    --shadow-soft: 0 10px 28px rgba(36, 48, 67, 0.11);
+    --shadow-strong: 0 20px 48px rgba(36, 48, 67, 0.18);
+    --pokemon-gradient: linear-gradient(135deg, #e3352f 0%, #c92b27 48%, #2f67d8 100%);
+    --pokemon-border: linear-gradient(135deg, #e3352f 0%, #e3352f 48%, #ffcb05 48%, #ffcb05 54%, #2f67d8 54%, #2f67d8 100%);
+    --gold-gradient: linear-gradient(135deg, #ffe26a, #ffcb05 52%, #f0a900);
 }
 
 /* Reset et styles de base */
@@ -19,7 +31,10 @@
 
 body {
     font-family: 'Arial', sans-serif;
-    background-color: var(--background-color);
+    background:
+        radial-gradient(circle at top left, rgba(255, 203, 5, 0.24), transparent 30rem),
+        radial-gradient(circle at top right, rgba(47, 103, 216, 0.18), transparent 28rem),
+        linear-gradient(180deg, #f8fbff 0%, var(--background-color) 45%, #f7f9fd 100%);
     color: var(--text-color);
     min-height: 100vh;
     display: flex;
@@ -355,7 +370,7 @@ h2 {
     justify-items: center;
     gap: 0.1rem;
     border-radius: 999px;
-    background: linear-gradient(135deg, #ff3e3e, #3e66ff);
+    background: var(--pokemon-gradient);
     box-shadow: 0 10px 28px rgba(62, 102, 255, 0.22);
     color: white;
     min-width: min(420px, 90vw);
@@ -613,7 +628,7 @@ h2 {
     gap: 1rem;
     padding: 0.9rem;
     border-radius: 8px;
-    background: linear-gradient(135deg, #ff3e3e, #3e66ff);
+    background: var(--pokemon-gradient);
     color: white;
 }
 
@@ -1935,7 +1950,7 @@ nav li button:hover {
 }
 
 .party-inline-header .is-current-opener {
-    background: linear-gradient(135deg, #ff3e3e, #3e66ff);
+    background: var(--pokemon-gradient);
     color: white;
 }
 
@@ -1968,7 +1983,7 @@ nav li button:hover {
     justify-content: space-between;
     gap: 0.75rem;
     border-radius: 8px;
-    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    background: var(--pokemon-gradient);
     color: white;
     margin: 0.75rem 0;
     padding: 0.8rem 1rem;
@@ -2166,5 +2181,424 @@ footer {
     .party-header {
         align-items: flex-start;
         flex-direction: column;
+    }
+}
+
+/* Rafraichissement visuel Pokemon */
+header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 58%),
+        var(--primary-color);
+    border-bottom: 4px solid var(--accent-color);
+    box-shadow: 0 10px 28px rgba(36, 48, 67, 0.18);
+}
+
+.logo-container h1 {
+    color: var(--accent-color);
+    font-weight: 900;
+    letter-spacing: 0;
+    text-shadow:
+        2px 2px 0 var(--secondary-color),
+        0 3px 10px rgba(0, 0, 0, 0.22);
+}
+
+.subtitle {
+    color: rgba(255, 255, 255, 0.88);
+    font-weight: 800;
+}
+
+nav a,
+.party-nav-item button,
+nav li button,
+.admin-nav-item button {
+    border-radius: 999px;
+    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+nav a:hover,
+.party-nav-item button:hover,
+nav li button:hover,
+.admin-nav-item button:hover {
+    background: rgba(255, 255, 255, 0.18);
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.active a {
+    border-bottom: 0;
+    background: white;
+    color: var(--primary-color);
+    box-shadow: inset 0 -3px 0 var(--accent-color);
+}
+
+main {
+    max-width: 1240px;
+}
+
+h2,
+.party-section-header h3,
+.party-inline-result h3,
+.stats-panel h3,
+.party-settings-grid h4 {
+    color: var(--primary-color);
+    font-weight: 900;
+}
+
+h2 {
+    position: relative;
+    margin-bottom: 1.75rem;
+}
+
+h2::after {
+    content: '';
+    display: block;
+    width: 4.5rem;
+    height: 0.28rem;
+    margin: 0.65rem auto 0;
+    border-radius: 999px;
+    background: var(--gold-gradient);
+}
+
+.booster {
+    position: relative;
+    width: min(360px, 100%);
+    background:
+        linear-gradient(var(--panel-color), var(--panel-color)) padding-box,
+        var(--pokemon-border) border-box;
+    border: 2px solid transparent;
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+}
+
+.booster::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 0.55rem;
+    background: var(--gold-gradient);
+}
+
+.booster:hover {
+    box-shadow: var(--shadow-strong);
+}
+
+.booster-image {
+    width: 100%;
+    min-height: 350px;
+    border-radius: var(--border-radius);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(238, 244, 255, 0.92)),
+        radial-gradient(circle at center, rgba(255, 203, 5, 0.24), transparent 58%);
+}
+
+.booster-image img {
+    filter: drop-shadow(0 16px 22px rgba(36, 48, 67, 0.24));
+}
+
+button,
+.open-button,
+.buttons-container button,
+.account-button,
+.account-card button,
+.admin-dashboard-header button,
+.collection-header button,
+.party-header button,
+.party-setup button,
+.party-actions button,
+.party-active-settings > button,
+.party-x2-intro button {
+    box-shadow: 0 6px 0 rgba(36, 48, 67, 0.16), 0 12px 22px rgba(36, 48, 67, 0.12);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+button:hover,
+.open-button:hover,
+.buttons-container button:hover,
+.account-button:hover,
+.account-card button:hover,
+.admin-dashboard-header button:hover,
+.collection-header button:hover,
+.party-header button:hover,
+.party-setup button:hover,
+.party-actions button:hover,
+.party-active-settings > button:hover,
+.party-x2-intro button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 0 rgba(36, 48, 67, 0.14), 0 18px 28px rgba(36, 48, 67, 0.16);
+}
+
+.open-button {
+    min-width: 13rem;
+    background: var(--gold-gradient);
+    color: #2f2500;
+    border: 2px solid #fff4b8;
+    border-radius: 999px;
+    padding: 0.78rem 1.25rem;
+    text-transform: uppercase;
+}
+
+.open-button:hover {
+    background: linear-gradient(135deg, #ffed94, #ffcb05 54%, #e59d00);
+}
+
+.buttons-container button,
+.account-card button,
+.admin-dashboard-header button,
+.collection-header button,
+.party-header button,
+.party-setup button,
+.party-actions button,
+.party-active-settings > button,
+.party-x2-intro button {
+    background: var(--secondary-color);
+    border: 2px solid rgba(255, 255, 255, 0.35);
+}
+
+.buttons-container button:hover,
+.account-card button:hover,
+.admin-dashboard-header button:hover,
+.collection-header button:hover,
+.party-header button:hover,
+.party-setup button:hover,
+.party-actions button:hover,
+.party-active-settings > button:hover,
+.party-x2-intro button:hover {
+    background: #2458bd;
+}
+
+.account-button {
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    color: var(--primary-color);
+}
+
+.account-button.subtle,
+.account-pill {
+    background: rgba(36, 48, 67, 0.22);
+}
+
+.account-modal {
+    background: rgba(20, 29, 43, 0.62);
+}
+
+.account-card,
+.stats-panel,
+.party-inline-result,
+.party-setup section,
+.party-active-settings,
+.party-result,
+.party-roster article,
+.collection-summary article,
+.collection-card,
+.admin-summary-grid article,
+.admin-reset-panel,
+.admin-booster-detail,
+.party-player-collection {
+    border: 1px solid var(--line-color);
+    background: var(--panel-color);
+    box-shadow: var(--shadow-soft);
+}
+
+.stats-header,
+.stats-content,
+.party-owned-section,
+.admin-booster-meta {
+    border-color: var(--line-color);
+}
+
+.stats-overview,
+.party-opener-banner,
+.party-inline-header .is-current-opener,
+.party-everyone-drinks {
+    background: var(--pokemon-gradient);
+    color: white;
+    box-shadow: 0 14px 34px rgba(47, 103, 216, 0.22);
+}
+
+.party-selection-opener {
+    margin: 0 0 1.25rem;
+}
+
+.party-opener-banner {
+    min-width: min(340px, 88vw);
+    border: 2px solid rgba(255, 203, 5, 0.82);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 55%),
+        var(--secondary-color);
+    box-shadow: 0 10px 24px rgba(47, 103, 216, 0.18);
+    padding: 0.7rem 1.1rem;
+}
+
+.party-opener-banner span,
+.party-opener-banner strong {
+    position: relative;
+    z-index: 1;
+    color: white;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.party-opener-banner span {
+    opacity: 0.92;
+}
+
+.stats-overview {
+    border: 2px solid rgba(255, 255, 255, 0.72);
+}
+
+.stat-card,
+.pull-rate-row,
+.party-stats-overview article,
+.party-player-stats article,
+.party-player-pull-grid article,
+.party-player-pull-list article,
+.party-booster-history-grid article,
+.admin-card-list li,
+.party-user-list label,
+.party-setup section > label,
+.party-settings-grid section,
+.party-inline-header div,
+.party-drink-grid article,
+.party-owned-card-grid article,
+.admin-reset-user,
+.admin-debug-booster-next,
+.collection-card.is-missing {
+    border: 1px solid var(--line-color);
+    background: var(--soft-panel);
+}
+
+.party-settings summary {
+    background: #eaf1ff;
+    border: 1px solid #cbdaf5;
+}
+
+.party-x2-intro,
+.party-x2-result {
+    background: #fff8dc;
+    border: 1px solid #ffe08a;
+}
+
+.party-x2-active,
+.party-x2-result.is-applied {
+    background: #ecfdf3;
+    border: 1px solid #bce8cc;
+}
+
+.party-card-owner-badge {
+    background: var(--secondary-color);
+}
+
+.party-x2-card-badge {
+    background: var(--gold-gradient);
+    border-color: white;
+}
+
+.card {
+    background: #dbe4f3;
+    border: 3px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 12px 24px rgba(36, 48, 67, 0.22);
+}
+
+.card:hover {
+    box-shadow: 0 18px 34px rgba(36, 48, 67, 0.28);
+}
+
+.opening-sequence .card {
+    box-shadow: 0 22px 46px rgba(36, 48, 67, 0.28);
+}
+
+.opening-counter {
+    border-radius: 999px;
+    background: white;
+    border: 1px solid var(--line-color);
+    color: var(--muted-color);
+    padding: 0.45rem 0.8rem;
+}
+
+.pack-opening-intro {
+    filter: drop-shadow(0 20px 28px rgba(36, 48, 67, 0.28));
+}
+
+.pull-rate-bar {
+    background: #dde7f6;
+}
+
+.pull-rate-expected {
+    background: rgba(227, 53, 47, 0.24);
+}
+
+.pull-rate-current {
+    background: var(--gold-gradient);
+}
+
+.pull-rate-actual,
+.party-player-pull-list strong,
+.party-x2-target strong {
+    color: var(--secondary-color);
+}
+
+.stat-card-value,
+.party-stats-overview strong,
+.party-player-stats dd,
+.collection-summary strong,
+.admin-summary-grid strong,
+.party-drink-grid strong {
+    color: var(--primary-color);
+}
+
+.reset-button,
+.stats-content > .reset-button,
+.admin-reset-actions button,
+.admin-debug-booster-next button,
+.toggle-stats-panel,
+.account-close,
+.account-card .saved-user-button {
+    background: #edf3ff;
+    color: var(--ink-color);
+    border: 1px solid var(--line-color);
+}
+
+.loading-indicator {
+    background: #1f2937;
+    border: 2px solid var(--accent-color);
+    box-shadow: var(--shadow-strong);
+}
+
+.loading-spinner {
+    border-top-color: var(--accent-color);
+}
+
+footer {
+    height: auto;
+    background: #1f2937;
+    border-top: 4px solid var(--accent-color);
+}
+
+@media (max-width: 768px) {
+    header {
+        position: static;
+    }
+
+    nav ul {
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    nav li {
+        margin: 0;
+    }
+
+    .booster {
+        width: 100%;
+    }
+
+    .buttons-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .buttons-container button {
+        justify-content: center;
     }
 }

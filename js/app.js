@@ -47,7 +47,8 @@ class PokemonShotsApp {
             newBoosterButton: document.getElementById('new-booster'),
             statsPanel: document.querySelector('.stats-panel'),
             loadingIndicator: document.getElementById('loading-indicator'),
-            boosterImg: document.getElementById('booster-img')
+            boosterImg: document.getElementById('booster-img'),
+            set151Link: document.querySelector('nav li.active a')
         };
     }
 
@@ -191,6 +192,13 @@ class PokemonShotsApp {
         // Ouvrir un nouveau booster
         this.elements.newBoosterButton.addEventListener('click', () => this.openNewBooster());
 
+        if (this.elements.set151Link) {
+            this.elements.set151Link.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.showSet151View();
+            });
+        }
+
         this.elements.cardsContainer.addEventListener('click', (event) => {
             if (this.suppressNextOpeningClick) {
                 this.suppressNextOpeningClick = false;
@@ -223,6 +231,37 @@ class PokemonShotsApp {
 
         // Raccourcis clavier pour accélérer l'ouverture des boosters
         document.addEventListener('keydown', (event) => this.handleKeyboardShortcuts(event));
+    }
+
+    /**
+     * Revient a l'ecran principal du set 151 en conservant l'ouverture courante.
+     * Si un recap existe deja, notamment en mode soiree, il est restaure au lieu
+     * de revenir brutalement a la selection du booster.
+     */
+    showSet151View() {
+        document.querySelector('.admin-dashboard')?.classList.add('hidden');
+        document.querySelector('.collection-panel')?.classList.add('hidden');
+        document.querySelector('.party-panel')?.classList.add('hidden');
+
+        const hasOpeningContent = Boolean(
+            this.elements.cardsContainer?.querySelector('.card, .pack-opening-intro')
+        );
+
+        if (this.elements.openingArea && hasOpeningContent) {
+            this.elements.boosterSelection?.classList.add('hidden');
+            this.elements.openingArea.classList.remove('hidden');
+
+            if (this.elements.cardsContainer.classList.contains('recap-grid')) {
+                this.showStatsAfterSummary();
+                setupCardZoomEvents();
+            }
+
+            return;
+        }
+
+        this.elements.openingArea?.classList.add('hidden');
+        this.elements.boosterSelection?.classList.remove('hidden');
+        this.updatePartyOpenerPreview();
     }
 
     /**

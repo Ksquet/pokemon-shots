@@ -14,15 +14,21 @@ function generateBoosterImage() {
         canvas.height = 350;
         const ctx = canvas.getContext('2d');
         
-        // Dégradé de fond rouge/bleu
-        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, '#ff3e3e');
-        gradient.addColorStop(1, '#3e66ff');
-        ctx.fillStyle = gradient;
+        // Fond unifie avec le theme Pokeball de l'interface.
+        ctx.fillStyle = '#e3352f';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#f8fbff';
+        ctx.fillRect(0, canvas.height * 0.45, canvas.width, canvas.height * 0.13);
+
+        ctx.fillStyle = '#2f67d8';
+        ctx.fillRect(0, canvas.height * 0.58, canvas.width, canvas.height * 0.42);
+
+        ctx.fillStyle = '#ffcb05';
+        ctx.fillRect(0, canvas.height * 0.545, canvas.width, 8);
         
         // Cadre
-        ctx.strokeStyle = 'white';
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 3;
         ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
         
@@ -51,7 +57,7 @@ function generateBoosterImage() {
         // Moitié supérieure rouge
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, Math.PI, 0);
-        ctx.fillStyle = '#ff3e3e';
+        ctx.fillStyle = '#e3352f';
         ctx.fill();
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 2;
@@ -83,7 +89,7 @@ function generateBoosterImage() {
         return canvas.toDataURL('image/png');
     } catch (error) {
         // Image de secours si la génération échoue
-        return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="250" height="350" viewBox="0 0 250 350"><rect fill="%23ff3e3e" width="250" height="350"/><text fill="white" font-family="Arial" font-size="24" text-anchor="middle" x="125" y="175">Booster 151</text></svg>';
+        return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="250" height="350" viewBox="0 0 250 350"><rect fill="%23e3352f" width="250" height="158"/><rect fill="%23f8fbff" y="158" width="250" height="44"/><rect fill="%232f67d8" y="202" width="250" height="148"/><rect fill="%23ffcb05" y="190" width="250" height="8"/><text fill="white" font-family="Arial" font-size="24" font-weight="700" text-anchor="middle" x="125" y="92">POKEMON</text><text fill="white" font-family="Arial" font-size="52" font-weight="700" text-anchor="middle" x="125" y="270">151</text></svg>';
     }
 }
 
