@@ -164,17 +164,35 @@ nav a:hover {
 
 .account-close {
     position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    width: 2rem;
-    height: 2rem;
+    top: 0.55rem;
+    right: 0.55rem;
+    width: 2.75rem;
+    height: 2.75rem;
     border: 0;
     border-radius: 50%;
-    background: #f2f3f7;
-    color: var(--text-color);
+    background: var(--secondary-color);
+    color: transparent;
     cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-size: 0;
+    font-weight: 900;
+    line-height: 0;
+    padding: 0;
+    z-index: 2;
+}
+
+.account-close::before {
+    content: '\00d7';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    color: white;
     font-size: 1.2rem;
+    font-weight: 900;
     line-height: 1;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
 }
 
 .account-card h2 {
@@ -2552,7 +2570,6 @@ button:hover,
 .admin-reset-actions button,
 .admin-debug-booster-next button,
 .toggle-stats-panel,
-.account-close,
 .account-card .saved-user-button {
     background: #edf3ff;
     color: var(--ink-color);
