@@ -269,6 +269,19 @@ function updatePartyStats(summary) {
     `;
 }
 
+function updateStatsPanelMode(mode = 'solo') {
+    const panel = document.querySelector('.stats-panel');
+    if (!panel) {
+        return;
+    }
+
+    const partySection = panel.querySelector('#party-stats-section');
+    if (partySection && mode !== 'party') {
+        partySection.classList.add('hidden');
+        partySection.innerHTML = '';
+    }
+}
+
 function renderStatsPanel(panel) {
     panel.innerHTML = `
         <div class="stats-header">
@@ -284,7 +297,7 @@ function renderStatsPanel(panel) {
         </div>
 
         <div class="stats-content">
-            <section class="stats-overview" aria-label="Boosters ouverts">
+            <section class="stats-overview solo-stats-section" aria-label="Boosters ouverts">
                 <div>
                     <span class="stats-overview-label">Boosters</span>
                     <strong id="opened-count">0</strong>
@@ -292,11 +305,11 @@ function renderStatsPanel(panel) {
                 <button id="reset-stats" class="reset-button" type="button">Reset</button>
             </section>
 
-            <section class="stats-grid" aria-label="Raretés obtenues">
+            <section class="stats-grid solo-stats-section" aria-label="Raretés obtenues">
                 ${createStatCardsMarkup()}
             </section>
 
-            <section id="pull-rates-panel" class="pull-rates-panel" aria-label="Comparaison des taux de pull">
+            <section id="pull-rates-panel" class="pull-rates-panel solo-stats-section" aria-label="Comparaison des taux de pull">
                 <div class="pull-rates-title">
                     <h4>Taux de pull</h4>
                     <span><span id="total-boosters-opened">0</span> ouverts</span>
@@ -319,6 +332,7 @@ function initializeStatsPanel() {
     }
 
     renderStatsPanel(statsPanel);
+    updateStatsPanelMode('solo');
 
     const resetButton = document.getElementById('reset-stats');
     if (resetButton) {
@@ -349,6 +363,7 @@ function initializeStatsPanel() {
 Object.assign(window, {
     updateStats,
     updatePullRates,
+    updateStatsPanelMode,
     updatePartyStats,
     initializeStatsPanel
 });

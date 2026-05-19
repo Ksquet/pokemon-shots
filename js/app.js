@@ -6,6 +6,9 @@
  */
 
 // Application principale
+const SOLO_STATS_STORAGE_KEY = 'pokemonShotsSoloStats';
+const SOLO_STATS_INACTIVITY_LIMIT = 7 * 60 * 60 * 1000;
+
 class PokemonShotsApp {
     constructor() {
         this.boosterOpener = null;
@@ -14,11 +17,13 @@ class PokemonShotsApp {
         this.currentBoosterCards = [];
         this.currentCardIndex = 0;
         this.currentBoosterData = [];
+        this.currentBoosterIsParty = false;
         this.currentBoosterPartyScored = false;
         this.openingIntroTimeout = null;
         this.currentBoosterImagesReady = Promise.resolve();
         this.suppressNextOpeningClick = false;
-        this.displayedStats = this.initDisplayedStats();
+        this.displayedStatsLastUsedAt = 0;
+        this.displayedStats = this.loadDisplayedStats();
         this.currentAccountUsername = null;
     }
 
@@ -31,6 +36,49 @@ class PokemonShotsApp {
             specialIllustrationRare: 0,
             hyperRare: 0
         };
+    }
+
+    loadDisplayedStats() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(SOLO_STATS_STORAGE_KEY));
+            const lastUsedAt = Number(saved?.lastUsedAt) || 0;
+
+            if (!saved?.stats || Date.now() - lastUsedAt > SOLO_STATS_INACTIVITY_LIMIT) {
+                localStorage.removeItem(SOLO_STATS_STORAGE_KEY);
+                return this.initDisplayedStats();
+            }
+
+            this.displayedStatsLastUsedAt = lastUsedAt;
+            return {
+                ...this.initDisplayedStats(),
+                ...saved.stats
+            };
+        } catch (error) {
+            localStorage.removeItem(SOLO_STATS_STORAGE_KEY);
+            return this.initDisplayedStats();
+        }
+    }
+
+    saveDisplayedStats() {
+        this.displayedStatsLastUsedAt = Date.now();
+        localStorage.setItem(SOLO_STATS_STORAGE_KEY, JSON.stringify({
+            stats: this.displayedStats,
+            lastUsedAt: this.displayedStatsLastUsedAt
+        }));
+    }
+
+    ensureDisplayedStatsFresh() {
+        if (
+            this.displayedStatsLastUsedAt &&
+            Date.now() - this.displayedStatsLastUsedAt > SOLO_STATS_INACTIVITY_LIMIT
+        ) {
+            this.displayedStats = this.initDisplayedStats();
+            localStorage.removeItem(SOLO_STATS_STORAGE_KEY);
+            this.currentBoosterCards.forEach(cardElement => {
+                delete cardElement.dataset.statsRecorded;
+            });
+            this.refreshDisplayedStats();
+        }
     }
 
     /**
@@ -134,18 +182,6 @@ class PokemonShotsApp {
         }
 
         this.elements.boosterSelection.querySelector('.party-selection-opener')?.remove();
-
-        const openerBanner = this.createPartyOpenerBanner('Prochain à ouvrir');
-        if (!openerBanner) {
-            return;
-        }
-
-        const preview = document.createElement('div');
-        preview.className = 'party-selection-opener';
-        preview.appendChild(openerBanner);
-
-        const boosterContainer = this.elements.boosterSelection.querySelector('.booster-container');
-        this.elements.boosterSelection.insertBefore(preview, boosterContainer);
     }
 
     placeStatsPanelAfterRecap() {
@@ -244,14 +280,22 @@ class PokemonShotsApp {
     }
 
     /**
-     * Revient a l'ecran principal du set 151 en conservant l'ouverture courante.
-     * Si un recap existe deja, notamment en mode soiree, il est restaure au lieu
-     * de revenir brutalement a la selection du booster.
+     * Revient a l'ecran principal du set 151.
+     * Une ouverture solo en cours est conservee, mais une ouverture soiree
+     * est fermee pour permettre de relancer des boosters personnels.
      */
     showSet151View() {
         document.querySelector('.admin-dashboard')?.classList.add('hidden');
         document.querySelector('.collection-panel')?.classList.add('hidden');
         document.querySelector('.party-panel')?.classList.add('hidden');
+
+        if (this.currentBoosterIsParty) {
+            this.resetOpeningArea();
+            this.elements.openingArea?.classList.add('hidden');
+            this.elements.boosterSelection?.classList.remove('hidden');
+            this.updatePartyOpenerPreview();
+            return;
+        }
 
         const hasOpeningContent = Boolean(
             this.elements.cardsContainer?.querySelector('.card, .pack-opening-intro')
@@ -417,21 +461,27 @@ class PokemonShotsApp {
     /**
      * Ouvre un booster et affiche les cartes
      */
-    openBooster() {
+    openBooster(options = {}) {
         // Vérifier que l'ouvreur de boosters est initialisé
         if (!this.boosterOpener) {
             alert('Erreur: Impossible d\'ouvrir un booster pour le moment.');
             return;
         }
-        
+        const isPartyBooster = Boolean(options.party && window.partyMode?.isActive());
+
+        if (!isPartyBooster) {
+            this.ensureDisplayedStatsFresh();
+        }
+
         // Générer un nouveau booster, ou consommer le booster debug préparé par l'admin.
         const booster = window.accounts?.consumeDebugNextBooster?.(this.boosterOpener) || this.boosterOpener.generateBooster();
         this.currentBoosterData = booster;
+        this.currentBoosterIsParty = isPartyBooster;
         this.currentBoosterPartyScored = false;
-        const collectionOwner = window.partyMode?.isActive()
-            ? window.partyMode.getCurrentOpener?.()?.username
-            : window.accounts?.getCurrentUser?.()?.username;
-        window.accounts?.recordBooster(booster, collectionOwner);
+
+        if (!isPartyBooster) {
+            window.accounts?.recordBooster(booster, window.accounts?.getCurrentUser?.()?.username);
+        }
         
         // Vider le conteneur de cartes
         this.elements.cardsContainer.innerHTML = '';
@@ -446,8 +496,12 @@ class PokemonShotsApp {
         this.applyPartyX2Badges(booster, this.currentBoosterCards);
         this.currentCardIndex = 0;
         this.currentBoosterImagesReady = this.preloadBoosterImages(this.currentBoosterCards);
-        this.displayedStats.opened++;
-        this.refreshDisplayedStats();
+
+        if (!this.currentBoosterIsParty) {
+            this.displayedStats.opened++;
+            this.saveDisplayedStats();
+            this.refreshDisplayedStats();
+        }
         
         // Afficher la zone d'ouverture et masquer la sélection de booster
         this.elements.boosterSelection.classList.add('hidden');
@@ -464,7 +518,7 @@ class PokemonShotsApp {
      * @param {HTMLElement[]} cardElements - Cartes rendues dans le DOM.
      */
     applyPartyOwnershipBadges(booster, cardElements) {
-        if (!window.partyMode?.isActive()) {
+        if (!this.currentBoosterIsParty) {
             return;
         }
 
@@ -486,7 +540,7 @@ class PokemonShotsApp {
     }
 
     applyPartyX2Badges(booster, cardElements) {
-        if (!window.partyMode?.isActive()) {
+        if (!this.currentBoosterIsParty) {
             return;
         }
 
@@ -538,7 +592,11 @@ class PokemonShotsApp {
         }, 850);
     }
 
-    createPartyOpenerBanner(label = 'Booster ouvert par') {
+    createPartyOpenerBanner(label = 'Booster ouvert par', options = {}) {
+        if (!options.force && !this.currentBoosterIsParty) {
+            return null;
+        }
+
         const opener = window.partyMode?.getCurrentOpener?.();
 
         if (!opener) {
@@ -652,7 +710,7 @@ class PokemonShotsApp {
             this.elements.cardsContainer.appendChild(cardElement);
         });
 
-        if (window.partyMode?.isActive() && !this.currentBoosterPartyScored) {
+        if (this.currentBoosterIsParty && !this.currentBoosterPartyScored) {
             const partyResult = window.partyMode.scoreBooster(this.currentBoosterData || []);
             this.currentBoosterPartyScored = true;
             this.renderPartyResultInSummary(partyResult);
@@ -662,15 +720,74 @@ class PokemonShotsApp {
         setupCardZoomEvents();
     }
 
+    showLastPartyBoosterSummary() {
+        const lastResult = window.partyMode?.getSummary?.()?.lastResult;
+
+        if (!lastResult?.cards?.length) {
+            return false;
+        }
+
+        this.clearOpeningIntroTimeout();
+        this.currentBoosterData = lastResult.cards;
+        this.currentBoosterIsParty = true;
+        this.currentBoosterPartyScored = true;
+        this.currentCardIndex = lastResult.cards.length;
+        this.currentBoosterCards = renderBoosterCards(lastResult.cards, null);
+        this.applyPartyOwnershipBadges(lastResult.cards, this.currentBoosterCards);
+        this.applyPartyX2Badges(lastResult.cards, this.currentBoosterCards);
+
+        this.elements.cardsContainer.innerHTML = '';
+        document.querySelector('.party-inline-result')?.remove();
+        this.elements.cardsContainer.classList.remove('opening-sequence');
+        this.elements.cardsContainer.classList.add('recap-grid');
+        this.updateOpeningControls();
+
+        this.currentBoosterCards.forEach(cardElement => {
+            revealCard(cardElement);
+            this.elements.cardsContainer.appendChild(cardElement);
+        });
+
+        this.renderPartyResultInSummary(lastResult);
+        this.elements.boosterSelection?.classList.add('hidden');
+        this.elements.openingArea?.classList.remove('hidden');
+        this.showStatsAfterSummary();
+        setupCardZoomEvents();
+        return true;
+    }
+
     showStatsAfterSummary() {
         if (!this.elements.statsPanel) {
             return;
         }
 
         this.placeStatsPanelAfterRecap();
-        updatePartyStats(window.partyMode?.getSummary?.() || null);
-        this.refreshDisplayedStats();
+        const partySummary = this.currentBoosterIsParty ? (window.partyMode?.getSummary?.() || null) : null;
+
+        updateStatsPanelMode(this.currentBoosterIsParty ? 'party' : 'solo');
+        updatePartyStats(partySummary);
+
+        if (partySummary) {
+            this.refreshStatsFromSnapshot(partySummary.pullStats || this.initDisplayedStats());
+        } else {
+            this.refreshDisplayedStats();
+        }
+
         this.elements.statsPanel.classList.remove('hidden', 'collapsed');
+    }
+
+    refreshPartyStatsPanel() {
+        if (
+            !this.currentBoosterIsParty ||
+            !this.elements.statsPanel ||
+            this.elements.statsPanel.classList.contains('hidden')
+        ) {
+            return;
+        }
+
+        updateStatsPanelMode('party');
+        const partySummary = window.partyMode?.getSummary?.() || null;
+        updatePartyStats(partySummary);
+        this.refreshStatsFromSnapshot(partySummary?.pullStats || this.initDisplayedStats());
     }
 
     renderPartyResultInSummary(result) {
@@ -767,6 +884,10 @@ class PokemonShotsApp {
     }
 
     recordDisplayedCardStats(cardElement) {
+        if (this.currentBoosterIsParty) {
+            return;
+        }
+
         if (cardElement.dataset.statsRecorded === 'true') {
             return;
         }
@@ -780,6 +901,7 @@ class PokemonShotsApp {
         }
 
         cardElement.dataset.statsRecorded = 'true';
+        this.saveDisplayedStats();
         this.refreshDisplayedStats();
     }
 
@@ -788,13 +910,18 @@ class PokemonShotsApp {
         updatePullRates(this.getDisplayedPullRates());
     }
 
-    getDisplayedPullRates() {
+    refreshStatsFromSnapshot(stats) {
+        updateStats(stats);
+        updatePullRates(this.getPullRatesForStats(stats));
+    }
+
+    getPullRatesForStats(stats) {
         const comparison = {};
         const pullRates = BoosterOpener.PULL_RATES;
 
         for (const [key, expectedRate] of Object.entries(pullRates)) {
-            const actualRate = this.displayedStats.opened > 0
-                ? (this.displayedStats[key] || 0) / this.displayedStats.opened
+            const actualRate = stats.opened > 0
+                ? (stats[key] || 0) / stats.opened
                 : 0;
 
             comparison[key] = {
@@ -807,13 +934,18 @@ class PokemonShotsApp {
         }
 
         return {
-            totalOpened: this.displayedStats.opened,
+            totalOpened: stats.opened,
             comparison
         };
     }
 
+    getDisplayedPullRates() {
+        return this.getPullRatesForStats(this.displayedStats);
+    }
+
     resetDisplayedStats() {
         this.displayedStats = this.initDisplayedStats();
+        this.saveDisplayedStats();
         this.currentBoosterCards.forEach(cardElement => {
             delete cardElement.dataset.statsRecorded;
         });
@@ -828,8 +960,9 @@ class PokemonShotsApp {
      * Ouvre un nouveau booster depuis le bouton ou le raccourci clavier.
      */
     openNewBooster() {
+        const shouldOpenPartyBooster = this.currentBoosterIsParty;
         this.resetOpeningArea();
-        this.openBooster();
+        this.openBooster({ party: shouldOpenPartyBooster });
     }
 
     /**
@@ -840,6 +973,7 @@ class PokemonShotsApp {
         this.currentBoosterCards = [];
         this.currentCardIndex = 0;
         this.currentBoosterData = [];
+        this.currentBoosterIsParty = false;
         this.currentBoosterPartyScored = false;
         this.elements.cardsContainer.innerHTML = '';
         document.querySelector('.party-inline-result')?.remove();

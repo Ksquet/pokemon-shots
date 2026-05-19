@@ -72,6 +72,7 @@ function createPartyMode() {
                 localStorage.removeItem(PARTY_STORAGE_KEY);
                 render();
                 window.pokemonShotsApp?.updatePartyOpenerPreview?.();
+                window.pokemonShotsApp?.refreshPartyStatsPanel?.();
                 return;
             }
 
@@ -81,6 +82,7 @@ function createPartyMode() {
                 normalizeState();
                 render();
                 window.pokemonShotsApp?.updatePartyOpenerPreview?.();
+                window.pokemonShotsApp?.refreshPartyStatsPanel?.();
             }
         } catch (error) {
             console.warn('[Pokemon Shots] Synchronisation du mode soiree echouee.', error);
@@ -208,6 +210,24 @@ function createPartyMode() {
         };
     }
 
+    function getPartyPullStats(history) {
+        const stats = {
+            opened: history.length,
+            ...createEmptySpecialStats()
+        };
+
+        history.forEach(booster => {
+            booster.cards?.forEach(card => {
+                const statKey = getSpecialStatKey(card);
+                if (statKey && statKey in stats) {
+                    stats[statKey]++;
+                }
+            });
+        });
+
+        return stats;
+    }
+
     function normalizeState() {
         if (!state) {
             return;
@@ -312,19 +332,28 @@ function createPartyMode() {
         render();
     }
 
+    function showBoosterSelection() {
+        panel?.classList.add('hidden');
+        document.getElementById('opening-area')?.classList.add('hidden');
+        document.querySelector('.stats-panel')?.classList.add('hidden');
+        document.querySelector('.booster-selection')?.classList.remove('hidden');
+        window.pokemonShotsApp?.updatePartyOpenerPreview?.();
+    }
+
     function showBoosterView() {
         panel?.classList.add('hidden');
 
-        const openingArea = document.getElementById('opening-area');
-        const hasBoosterRecap = Boolean(document.querySelector('.cards-container .card'));
-
-        if (openingArea && hasBoosterRecap) {
-            openingArea.classList.remove('hidden');
-            document.querySelector('.booster-selection')?.classList.add('hidden');
-        } else {
-            document.querySelector('.booster-selection')?.classList.remove('hidden');
-            window.pokemonShotsApp?.updatePartyOpenerPreview?.();
+        if (
+            state?.active &&
+            !state.draft &&
+            !state.x2Selection &&
+            canCurrentUserAccessParty() &&
+            window.pokemonShotsApp?.showLastPartyBoosterSummary?.()
+        ) {
+            return;
         }
+
+        showBoosterSelection();
     }
 
     function getSelectableUsers() {
@@ -843,6 +872,7 @@ function createPartyMode() {
             currentOpener: state.players[state.openerIndex]?.username || null,
             lastResult: state.lastResult,
             topPlayer,
+            pullStats: getPartyPullStats(history),
             boosterHistory: history,
             x2Card: state.x2Card,
             players
@@ -1265,8 +1295,9 @@ function createPartyMode() {
             render();
         });
         panel.querySelector('#party-open-booster')?.addEventListener('click', () => {
-            showBoosterView();
-            app?.openBooster();
+            panel?.classList.add('hidden');
+            document.querySelector('.booster-selection')?.classList.add('hidden');
+            app?.openBooster({ party: true });
         });
     }
 
