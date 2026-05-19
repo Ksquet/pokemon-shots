@@ -286,6 +286,26 @@ function createPartyMode() {
             .sort((a, b) => a.username.localeCompare(b.username));
     }
 
+    function getCurrentUsername() {
+        return window.accounts?.getCurrentUser?.()?.username || null;
+    }
+
+    function isCurrentUserInParty() {
+        const username = getCurrentUsername();
+        return Boolean(username && state?.players?.some(player => player.username === username));
+    }
+
+    function canCurrentUserAccessParty() {
+        const currentUser = window.accounts?.getCurrentUser?.();
+        return Boolean(
+            !state?.active ||
+            currentUser?.role === 'admin' ||
+            state.draft ||
+            state.x2Selection ||
+            isCurrentUserInParty()
+        );
+    }
+
     function createInitialState(players, mode, settings) {
         return {
             active: true,
@@ -1121,6 +1141,23 @@ function createPartyMode() {
         `;
     }
 
+    function renderNotInParty() {
+        return `
+            <div class="party-header">
+                <div>
+                    <p>Mode Soirée</p>
+                    <h2>Soirée en cours</h2>
+                    <span>Ton utilisateur n'est pas dans cette soirée.</span>
+                </div>
+                <div class="party-actions">
+                    <button type="button" id="party-back">Retour aux boosters</button>
+                    <button type="button" id="party-stop">Arrêter la soirée pour tous</button>
+                </div>
+            </div>
+            ${renderPartyRoster()}
+        `;
+    }
+
     function render() {
         ensurePartyPanel();
         if (!panel) {
@@ -1129,6 +1166,8 @@ function createPartyMode() {
 
         if (!state?.active) {
             panel.innerHTML = renderSetup();
+        } else if (!canCurrentUserAccessParty()) {
+            panel.innerHTML = renderNotInParty();
         } else if (state.draft) {
             panel.innerHTML = renderDraft();
         } else if (state.x2Selection) {
@@ -1146,6 +1185,7 @@ function createPartyMode() {
             state = null;
             savePartyState();
             render();
+            window.pokemonShotsApp?.updatePartyOpenerPreview?.();
         });
         panel.querySelector('#party-start')?.addEventListener('click', () => {
             const players = [...panel.querySelectorAll('.party-user-list input:checked')].map(input => input.value);

@@ -32,6 +32,22 @@
     }
 
     async function save(id, data) {
+        if (data === null) {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}?id=eq.${encodeURIComponent(id)}`, {
+                method: 'DELETE',
+                headers: getHeaders({
+                    Prefer: 'return=minimal'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Supabase delete failed (${response.status}): ${await response.text()}`);
+            }
+
+            console.info(`[Pokemon Shots] Donnees partagees supprimees: ${id}`);
+            return;
+        }
+
         const response = await fetch(getEndpoint(), {
             method: 'POST',
             headers: getHeaders({
