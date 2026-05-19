@@ -41,8 +41,12 @@ function createPartyMode() {
     function savePartyState() {
         if (state) {
             localStorage.setItem(PARTY_STORAGE_KEY, JSON.stringify(state));
+            window.sharedStore?.saveFromLocalStorage?.(PARTY_STORAGE_KEY);
         } else {
             localStorage.removeItem(PARTY_STORAGE_KEY);
+            window.sharedStore?.save?.(PARTY_STORAGE_KEY, null).catch(error => {
+                console.warn('[Pokemon Shots] Suppression Supabase du mode soirée échouée.', error);
+            });
         }
     }
 
@@ -104,6 +108,7 @@ function createPartyMode() {
     function saveDefaultSettings(settings) {
         const normalizedSettings = normalizeSettings(settings);
         localStorage.setItem(PARTY_DEFAULT_SETTINGS_KEY, JSON.stringify(normalizedSettings));
+        window.sharedStore?.saveFromLocalStorage?.(PARTY_DEFAULT_SETTINGS_KEY);
         return normalizedSettings;
     }
 
@@ -1177,8 +1182,13 @@ function createPartyMode() {
         });
     }
 
-    function init(options = {}) {
+    async function init(options = {}) {
         app = options.app || null;
+        await window.sharedStore?.hydrate?.([
+            PARTY_STORAGE_KEY,
+            PARTY_DEFAULT_SETTINGS_KEY
+        ]);
+        state = loadPartyState();
         normalizeState();
         ensurePartyPanel();
         render();

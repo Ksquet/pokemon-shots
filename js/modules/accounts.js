@@ -72,6 +72,7 @@ function loadAccountDb() {
 
 function saveAccountDb(db) {
     localStorage.setItem(ACCOUNT_DB_KEY, JSON.stringify(db));
+    window.sharedStore?.saveFromLocalStorage?.(ACCOUNT_DB_KEY);
 }
 
 function loadAccountSession() {
@@ -1177,8 +1178,10 @@ function createAccountModule() {
         bindAdminResetForm(db);
     }
 
-    function init(options = {}) {
+    async function init(options = {}) {
         onSessionChange = options.onSessionChange || null;
+        await window.sharedStore?.hydrate?.([ACCOUNT_DB_KEY]);
+        currentUser = loadAccountSession();
         renderAccountUi();
         ensureLoginModal();
         ensureCollectionPanel();

@@ -90,13 +90,13 @@ class PokemonShotsApp {
         this.setupEventListeners();
 
         if (window.accounts) {
-            window.accounts.init({
+            await window.accounts.init({
                 onSessionChange: (user) => this.handleAccountSessionChange(user)
             });
         }
 
         if (window.partyMode) {
-            window.partyMode.init({ app: this });
+            await window.partyMode.init({ app: this });
         }
 
         // Initialiser le panneau de statistiques

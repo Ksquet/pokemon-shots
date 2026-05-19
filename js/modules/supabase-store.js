@@ -1,0 +1,88 @@
+(function initSharedStore() {
+    const SUPABASE_URL = 'https://aznkndwhphthdinyovom.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_da8dencVZdr1qXRun905pA_s9w1LLkJ';
+    const TABLE_NAME = 'app_state';
+
+    function getEndpoint(id = '') {
+        const base = `${SUPABASE_URL}/rest/v1/${TABLE_NAME}`;
+        return id ? `${base}?id=eq.${encodeURIComponent(id)}&select=data` : base;
+    }
+
+    function getHeaders(extra = {}) {
+        return {
+            apikey: SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+            ...extra
+        };
+    }
+
+    async function load(id) {
+        const response = await fetch(getEndpoint(id), {
+            headers: getHeaders()
+        });
+
+        if (!response.ok) {
+            throw new Error(`Supabase load failed (${response.status})`);
+        }
+
+        const rows = await response.json();
+        return rows[0]?.data ?? null;
+    }
+
+    async function save(id, data) {
+        const response = await fetch(getEndpoint(), {
+            method: 'POST',
+            headers: getHeaders({
+                Prefer: 'resolution=merge-duplicates,return=minimal'
+            }),
+            body: JSON.stringify({
+                id,
+                data,
+                updated_at: new Date().toISOString()
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Supabase save failed (${response.status})`);
+        }
+    }
+
+    async function hydrate(ids) {
+        await Promise.all(ids.map(async id => {
+            try {
+                const remoteData = await load(id);
+
+                if (remoteData !== null) {
+                    localStorage.setItem(id, JSON.stringify(remoteData));
+                    return;
+                }
+
+                const localData = localStorage.getItem(id);
+                if (localData) {
+                    await save(id, JSON.parse(localData));
+                }
+            } catch (error) {
+                console.warn(`[Pokemon Shots] Synchronisation Supabase indisponible pour ${id}.`, error);
+            }
+        }));
+    }
+
+    function saveFromLocalStorage(id) {
+        try {
+            const rawValue = localStorage.getItem(id);
+            const data = rawValue ? JSON.parse(rawValue) : null;
+            return save(id, data).catch(error => {
+                console.warn(`[Pokemon Shots] Sauvegarde Supabase échouée pour ${id}.`, error);
+            });
+        } catch (error) {
+            console.warn(`[Pokemon Shots] Données locales invalides pour ${id}.`, error);
+            return Promise.resolve();
+        }
+    }
+
+    window.sharedStore = {
+        hydrate,
+        save,
+        saveFromLocalStorage
+    };
+})();
