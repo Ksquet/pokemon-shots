@@ -57,6 +57,7 @@
 
                 if (remoteData !== null) {
                     localStorage.setItem(id, JSON.stringify(remoteData));
+                    console.info(`[Pokemon Shots] Données partagées chargées: ${id}`);
                     return;
                 }
 

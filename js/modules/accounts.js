@@ -408,6 +408,11 @@ function createAccountModule() {
         document.getElementById('account-logout-button')?.addEventListener('click', logout);
     }
 
+    async function refreshAccountDbFromSharedStore() {
+        await window.sharedStore?.hydrate?.([ACCOUNT_DB_KEY]);
+        currentUser = loadAccountSession();
+    }
+
     function ensureLoginModal() {
         if (modal) {
             return;
@@ -446,8 +451,10 @@ function createAccountModule() {
         });
     }
 
-    function renderSavedUsers() {
+    async function renderSavedUsers() {
         ensureLoginModal();
+        await refreshAccountDbFromSharedStore();
+
         const savedUsers = modal.querySelector('#saved-users');
         const users = loadAccountDb().users;
 
@@ -476,10 +483,11 @@ function createAccountModule() {
         });
     }
 
-    function showLogin() {
+    async function showLogin() {
         ensureLoginModal();
-        renderSavedUsers();
         modal.classList.remove('hidden');
+
+        await renderSavedUsers();
         setTimeout(() => modal.querySelector('#account-username')?.focus(), 0);
     }
 
