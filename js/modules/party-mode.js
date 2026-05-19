@@ -29,6 +29,7 @@ function createPartyMode() {
     let panel = null;
     let navItem = null;
     let state = loadPartyState();
+    let syncInterval = null;
 
     function loadPartyState() {
         try {
@@ -48,6 +49,50 @@ function createPartyMode() {
                 console.warn('[Pokemon Shots] Suppression Supabase du mode soirée échouée.', error);
             });
         }
+    }
+
+    function hasSamePartyState(nextState) {
+        return JSON.stringify(state || null) === JSON.stringify(nextState || null);
+    }
+
+    async function refreshPartyStateFromSharedStore() {
+        if (!window.sharedStore?.load) {
+            return;
+        }
+
+        try {
+            const remoteState = await window.sharedStore.load(PARTY_STORAGE_KEY);
+
+            if (remoteState === null) {
+                if (!state && !localStorage.getItem(PARTY_STORAGE_KEY)) {
+                    return;
+                }
+
+                state = null;
+                localStorage.removeItem(PARTY_STORAGE_KEY);
+                render();
+                window.pokemonShotsApp?.updatePartyOpenerPreview?.();
+                return;
+            }
+
+            if (!hasSamePartyState(remoteState)) {
+                state = remoteState;
+                localStorage.setItem(PARTY_STORAGE_KEY, JSON.stringify(remoteState));
+                normalizeState();
+                render();
+                window.pokemonShotsApp?.updatePartyOpenerPreview?.();
+            }
+        } catch (error) {
+            console.warn('[Pokemon Shots] Synchronisation du mode soiree echouee.', error);
+        }
+    }
+
+    function startPartyStateSync() {
+        if (syncInterval || !window.sharedStore?.load) {
+            return;
+        }
+
+        syncInterval = setInterval(refreshPartyStateFromSharedStore, 5000);
     }
 
     function getBoosterHistory() {
@@ -1227,13 +1272,15 @@ function createPartyMode() {
         await window.sharedStore?.hydrate?.([
             PARTY_STORAGE_KEY,
             PARTY_DEFAULT_SETTINGS_KEY
-        ]);
+        ], {
+            pullOnlyIds: [PARTY_STORAGE_KEY]
+        });
         state = loadPartyState();
         normalizeState();
         ensurePartyPanel();
         render();
-        window.sharedStore?.saveFromLocalStorage?.(PARTY_STORAGE_KEY);
         window.sharedStore?.saveFromLocalStorage?.(PARTY_DEFAULT_SETTINGS_KEY);
+        startPartyStateSync();
     }
 
     return {

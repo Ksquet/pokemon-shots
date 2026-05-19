@@ -88,7 +88,15 @@
         return queueSave(id, () => save(id, data));
     }
 
-    async function hydrate(ids) {
+    function shouldPushLocalWhenMissing(id, options) {
+        if (Array.isArray(options?.pullOnlyIds) && options.pullOnlyIds.includes(id)) {
+            return false;
+        }
+
+        return options?.pushLocalIfMissing !== false;
+    }
+
+    async function hydrate(ids, options = {}) {
         await Promise.all(ids.map(async id => {
             try {
                 const remoteData = await load(id);
@@ -100,8 +108,11 @@
                 }
 
                 const localData = localStorage.getItem(id);
-                if (localData) {
+                if (localData && shouldPushLocalWhenMissing(id, options)) {
                     await saveQueued(id, JSON.parse(localData));
+                } else if (!shouldPushLocalWhenMissing(id, options)) {
+                    localStorage.removeItem(id);
+                    console.info(`[Pokemon Shots] Donnees partagees absentes, cache local supprime: ${id}`);
                 }
             } catch (error) {
                 console.warn(`[Pokemon Shots] Synchronisation Supabase indisponible pour ${id}.`, error);
@@ -129,6 +140,7 @@
 
     window.sharedStore = {
         hydrate,
+        load,
         save: saveQueued,
         saveFromLocalStorage
     };
