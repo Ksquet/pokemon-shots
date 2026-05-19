@@ -62,6 +62,37 @@ function normalizePokemonName(value) {
         .trim();
 }
 
+/**
+ * Tire d'abord un Pokemon, puis une carte de ce Pokemon, pour eviter
+ * qu'un Pokemon tres imprime pese plus lourd dans le mini-jeu.
+ */
+function pickCardByPokemonWeight(cards = [], pokemonNames = []) {
+    const cardsByPokemon = new Map();
+
+    cards.forEach(card => {
+        const key = normalizePokemonName(card.answerName || card.name);
+        if (!key) {
+            return;
+        }
+
+        const group = cardsByPokemon.get(key) || [];
+        group.push(card);
+        cardsByPokemon.set(key, group);
+    });
+
+    const availablePokemon = pokemonNames
+        .map(name => ({
+            name,
+            key: normalizePokemonName(name)
+        }))
+        .filter(pokemon => cardsByPokemon.has(pokemon.key));
+
+    const pickedPokemon = availablePokemon[Math.floor(Math.random() * availablePokemon.length)];
+    const pokemonCards = pickedPokemon ? cardsByPokemon.get(pickedPokemon.key) : cards;
+
+    return pokemonCards?.[Math.floor(Math.random() * pokemonCards.length)] || null;
+}
+
 function getHighImageUrl(image) {
     return image ? `${image}/high.jpg` : null;
 }
@@ -518,4 +549,5 @@ const loadingProgress = (() => {
 window.loadPokemon151Data = loadPokemon151Data;
 window.loadMiniGameCardsForPokemonNames = loadMiniGameCardsForPokemonNames;
 window.loadMiniGameCardDetails = loadMiniGameCardDetails;
+window.pickCardByPokemonWeight = pickCardByPokemonWeight;
 window.loadingProgress = loadingProgress;

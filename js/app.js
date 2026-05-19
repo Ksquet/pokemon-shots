@@ -644,30 +644,11 @@ class PokemonShotsApp {
     }
 
     pickPartyMiniGameCard(candidates, pokemonNames = this.getCurrentSetPokemonNames()) {
-        const candidatesByPokemon = new Map();
+        if (typeof window.pickCardByPokemonWeight === 'function') {
+            return window.pickCardByPokemonWeight(candidates, pokemonNames);
+        }
 
-        candidates.forEach(card => {
-            const key = this.normalizeGuessText(card.answerName || this.getBasePokemonName(card.name));
-            if (!key) {
-                return;
-            }
-
-            const group = candidatesByPokemon.get(key) || [];
-            group.push(card);
-            candidatesByPokemon.set(key, group);
-        });
-
-        const availablePokemon = pokemonNames
-            .map(name => ({
-                name,
-                key: this.normalizeGuessText(name)
-            }))
-            .filter(pokemon => candidatesByPokemon.has(pokemon.key));
-
-        const pickedPokemon = availablePokemon[Math.floor(Math.random() * availablePokemon.length)];
-        const cards = pickedPokemon ? candidatesByPokemon.get(pickedPokemon.key) : candidates;
-
-        return cards[Math.floor(Math.random() * cards.length)] || null;
+        return candidates[Math.floor(Math.random() * candidates.length)] || null;
     }
 
     async enrichPartyMiniGameCard(card) {
@@ -892,7 +873,7 @@ class PokemonShotsApp {
                 return;
             }
 
-            rejectedAnswers.add(this.normalizeGuessText(answer));
+            rejectedAnswers.add(this.getRejectedAnswerKey(answer, answerOptions));
             attemptsLeft--;
             if (attemptsLeft <= 0) {
                 finish(false, answer);
@@ -911,6 +892,12 @@ class PokemonShotsApp {
         });
 
         input.focus();
+    }
+
+    getRejectedAnswerKey(answer, answerOptions) {
+        const normalizedAnswer = this.normalizeGuessText(answer);
+        const matchingOption = answerOptions.find(name => this.normalizeGuessText(name) === normalizedAnswer);
+        return this.normalizeGuessText(matchingOption || answer);
     }
 
     finishPartyMiniGame(stage, card, result) {
@@ -1178,41 +1165,6 @@ class PokemonShotsApp {
 
         this.showStatsAfterSummary();
         setupCardZoomEvents();
-    }
-
-    showLastPartyBoosterSummary() {
-        const lastResult = window.partyMode?.getSummary?.()?.lastResult;
-
-        if (!lastResult?.cards?.length) {
-            return false;
-        }
-
-        this.clearOpeningIntroTimeout();
-        this.currentBoosterData = lastResult.cards;
-        this.currentBoosterIsParty = true;
-        this.currentBoosterPartyScored = true;
-        this.currentCardIndex = lastResult.cards.length;
-        this.currentBoosterCards = renderBoosterCards(lastResult.cards, null);
-        this.applyPartyOwnershipBadges(lastResult.cards, this.currentBoosterCards);
-        this.applyPartyX2Badges(lastResult.cards, this.currentBoosterCards);
-
-        this.elements.cardsContainer.innerHTML = '';
-        document.querySelector('.party-inline-result')?.remove();
-        this.elements.cardsContainer.classList.remove('opening-sequence');
-        this.elements.cardsContainer.classList.add('recap-grid');
-        this.updateOpeningControls();
-
-        this.currentBoosterCards.forEach(cardElement => {
-            revealCard(cardElement);
-            this.elements.cardsContainer.appendChild(cardElement);
-        });
-
-        this.renderPartyResultInSummary(lastResult);
-        this.elements.boosterSelection?.classList.add('hidden');
-        this.elements.openingArea?.classList.remove('hidden');
-        this.showStatsAfterSummary();
-        setupCardZoomEvents();
-        return true;
     }
 
     showStatsAfterSummary() {

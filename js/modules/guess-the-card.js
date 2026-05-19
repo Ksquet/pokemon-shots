@@ -118,30 +118,11 @@
     }
 
     function pickCardFairlyByPokemon(cards, pokemonNames) {
-        const cardsByPokemon = new Map();
+        if (typeof window.pickCardByPokemonWeight === 'function') {
+            return window.pickCardByPokemonWeight(cards, pokemonNames);
+        }
 
-        cards.forEach(card => {
-            const key = normalizeText(card.answerName || getBaseName(card.name));
-            if (!key) {
-                return;
-            }
-
-            const group = cardsByPokemon.get(key) || [];
-            group.push(card);
-            cardsByPokemon.set(key, group);
-        });
-
-        const availablePokemon = pokemonNames
-            .map(name => ({
-                name,
-                key: normalizeText(name)
-            }))
-            .filter(pokemon => cardsByPokemon.has(pokemon.key));
-
-        const pickedPokemon = availablePokemon[Math.floor(Math.random() * availablePokemon.length)];
-        const pokemonCards = pickedPokemon ? cardsByPokemon.get(pickedPokemon.key) : cards;
-
-        return pokemonCards[Math.floor(Math.random() * pokemonCards.length)] || null;
+        return cards[Math.floor(Math.random() * cards.length)] || null;
     }
 
     function getImageUrl(card) {
@@ -336,7 +317,7 @@
                 return;
             }
 
-            rejectedAnswers.add(normalizeText(answer));
+            rejectedAnswers.add(getRejectedAnswerKey(answer, answerOptions));
             currentPixelation = Math.min(90, currentPixelation + 7);
             attemptsElement.textContent = `${attempts} essai${attempts > 1 ? 's' : ''}`;
             feedback.textContent = 'Pas celle-la. La carte devient un peu plus nette.';
@@ -349,6 +330,12 @@
         stage.querySelector('#guess-card-reveal')?.addEventListener('click', () => revealAnswer(false));
 
         input.focus();
+    }
+
+    function getRejectedAnswerKey(answer, answerOptions) {
+        const normalizedAnswer = normalizeText(answer);
+        const matchingOption = answerOptions.find(name => normalizeText(name) === normalizedAnswer);
+        return normalizeText(matchingOption || answer);
     }
 
     function revealAnswer(success) {
