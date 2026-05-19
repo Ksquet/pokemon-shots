@@ -11,6 +11,7 @@
     function getHeaders(extra = {}) {
         return {
             apikey: SUPABASE_ANON_KEY,
+            Authorization: SUPABASE_ANON_KEY,
             'Content-Type': 'application/json',
             ...extra
         };
@@ -22,7 +23,7 @@
         });
 
         if (!response.ok) {
-            throw new Error(`Supabase load failed (${response.status})`);
+            throw new Error(`Supabase load failed (${response.status}): ${await response.text()}`);
         }
 
         const rows = await response.json();
@@ -43,8 +44,10 @@
         });
 
         if (!response.ok) {
-            throw new Error(`Supabase save failed (${response.status})`);
+            throw new Error(`Supabase save failed (${response.status}): ${await response.text()}`);
         }
+
+        console.info(`[Pokemon Shots] Données partagées sauvegardées: ${id}`);
     }
 
     async function hydrate(ids) {

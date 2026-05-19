@@ -1192,6 +1192,8 @@ function createPartyMode() {
         normalizeState();
         ensurePartyPanel();
         render();
+        window.sharedStore?.saveFromLocalStorage?.(PARTY_STORAGE_KEY);
+        window.sharedStore?.saveFromLocalStorage?.(PARTY_DEFAULT_SETTINGS_KEY);
     }
 
     return {

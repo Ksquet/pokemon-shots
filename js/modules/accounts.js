@@ -1193,6 +1193,8 @@ function createAccountModule() {
         } else if (typeof onSessionChange === 'function') {
             onSessionChange(currentUser);
         }
+
+        window.sharedStore?.saveFromLocalStorage?.(ACCOUNT_DB_KEY);
     }
 
     return {
