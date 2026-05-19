@@ -7,8 +7,12 @@ const API_CONFIG = {
     baseUrl: 'https://api.tcgdex.net/v2/fr',
     setId: 'sv03.5',
     fullSetPath: 'sv/sv03.5',
-    cacheKey: 'pokemon151DataWithPricing'
+    cacheKey: 'pokemon151DataWithPricing',
+    miniGameCardsCacheKey: 'pokemonShotsTcgdexMiniGameCards'
 };
+
+let allCardsMemoryCache = null;
+const miniGameCardDetailsCache = new Map();
 
 // Mappings des raretés
 const RARITY_MAP = {
@@ -46,6 +50,20 @@ const NORMALIZED_RARITY_MAP = Object.fromEntries(
 
 function mapApiRarity(rarity) {
     return RARITY_MAP[rarity] || NORMALIZED_RARITY_MAP[normalizeRarityKey(rarity)] || 'common';
+}
+
+function normalizePokemonName(value) {
+    return String(value || '')
+        .replace(/\s*[- ](?:ex|v|vmax|vstar|gx|lv\.?\s*x)$/i, '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+}
+
+function getHighImageUrl(image) {
+    return image ? `${image}/high.jpg` : null;
 }
 
 function getCardmarketPricing(variant) {
@@ -117,6 +135,129 @@ function getValidCachedData() {
     }
     
     return null;
+}
+
+function getMiniGamePokemonKey(pokemonNames = []) {
+    return pokemonNames
+        .map(normalizePokemonName)
+        .filter(Boolean)
+        .sort()
+        .join('|');
+}
+
+function getValidMiniGameCardsCache(pokemonNames = []) {
+    try {
+        const cachedData = localStorage.getItem(API_CONFIG.miniGameCardsCacheKey);
+
+        if (cachedData) {
+            const { data, cachedDay, pokemonKey } = JSON.parse(cachedData);
+            const today = new Date().toISOString().slice(0, 10);
+
+            if (cachedDay === today && pokemonKey === getMiniGamePokemonKey(pokemonNames) && Array.isArray(data)) {
+                return data;
+            }
+        }
+    } catch (error) {
+        localStorage.removeItem(API_CONFIG.miniGameCardsCacheKey);
+    }
+
+    return null;
+}
+
+async function loadAllTcgdexCards() {
+    if (allCardsMemoryCache) {
+        return allCardsMemoryCache;
+    }
+
+    const response = await fetch(`${API_CONFIG.baseUrl}/cards`);
+
+    if (!response.ok) {
+        throw new Error(`Erreur lors de la recuperation des cartes TCGdex: ${response.status}`);
+    }
+
+    const cards = await response.json();
+    allCardsMemoryCache = Array.isArray(cards) ? cards
+        .filter(card => card?.name && card?.image)
+        .map(card => ({
+            id: card.id,
+            localId: card.localId,
+            name: card.name,
+            imageUrl: getHighImageUrl(card.image),
+            image: card.image
+        })) : [];
+
+    return allCardsMemoryCache;
+}
+
+async function loadMiniGameCardsForPokemonNames(pokemonNames = []) {
+    const allowedNames = new Set(pokemonNames.map(normalizePokemonName).filter(Boolean));
+
+    if (!allowedNames.size) {
+        return [];
+    }
+
+    const cachedCards = getValidMiniGameCardsCache(pokemonNames);
+    if (cachedCards) {
+        return cachedCards;
+    }
+
+    const cards = await loadAllTcgdexCards();
+    const miniGameCards = cards
+        .map(card => ({
+            ...card,
+            answerName: card.name.replace(/\s*[- ](?:ex|v|vmax|vstar|gx|lv\.?\s*x)$/i, '').trim(),
+            answerKey: normalizePokemonName(card.name)
+        }))
+        .filter(card => allowedNames.has(card.answerKey));
+
+    try {
+        localStorage.setItem(API_CONFIG.miniGameCardsCacheKey, JSON.stringify({
+            data: miniGameCards,
+            cachedDay: new Date().toISOString().slice(0, 10),
+            pokemonKey: getMiniGamePokemonKey(pokemonNames),
+            timestamp: Date.now()
+        }));
+    } catch (error) {
+        console.warn('[Pokemon Shots] Cache local du mini-jeu indisponible.', error);
+    }
+
+    return miniGameCards;
+}
+
+async function loadMiniGameCardDetails(card) {
+    if (!card?.id) {
+        return card;
+    }
+
+    if (miniGameCardDetailsCache.has(card.id)) {
+        return {
+            ...card,
+            ...miniGameCardDetailsCache.get(card.id)
+        };
+    }
+
+    const response = await fetch(`${API_CONFIG.baseUrl}/cards/${card.id}`);
+
+    if (!response.ok) {
+        throw new Error(`Erreur lors de la recuperation de la carte ${card.id}: ${response.status}`);
+    }
+
+    const details = await response.json();
+    const enrichedDetails = {
+        setName: details.set?.name || null,
+        setId: details.set?.id || null,
+        localId: details.localId || card.localId,
+        rarity: details.rarity || card.rarity,
+        category: details.category || card.category,
+        cardmarketPrices: getCardmarketPrices(details)
+    };
+
+    miniGameCardDetailsCache.set(card.id, enrichedDetails);
+
+    return {
+        ...card,
+        ...enrichedDetails
+    };
 }
 
 /**
@@ -375,4 +516,6 @@ const loadingProgress = (() => {
 
 // Exports
 window.loadPokemon151Data = loadPokemon151Data;
+window.loadMiniGameCardsForPokemonNames = loadMiniGameCardsForPokemonNames;
+window.loadMiniGameCardDetails = loadMiniGameCardDetails;
 window.loadingProgress = loadingProgress;

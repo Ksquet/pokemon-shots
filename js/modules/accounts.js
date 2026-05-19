@@ -602,6 +602,7 @@ function createAccountModule() {
         document.querySelector('.booster-selection')?.classList.add('hidden');
         document.getElementById('opening-area')?.classList.add('hidden');
         document.querySelector('.party-panel')?.classList.add('hidden');
+        document.querySelector('.guess-card-panel')?.classList.add('hidden');
         collectionPanel?.classList.add('hidden');
         adminPanel.classList.remove('hidden');
         renderAdminPanel();
@@ -616,6 +617,7 @@ function createAccountModule() {
         }
 
         document.querySelector('.party-panel')?.classList.add('hidden');
+        document.querySelector('.guess-card-panel')?.classList.add('hidden');
 
         const openingArea = document.getElementById('opening-area');
         const cardsContainer = openingArea?.querySelector('.cards-container');
@@ -649,6 +651,7 @@ function createAccountModule() {
         document.getElementById('opening-area')?.classList.add('hidden');
         document.querySelector('.admin-dashboard')?.classList.add('hidden');
         document.querySelector('.party-panel')?.classList.add('hidden');
+        document.querySelector('.guess-card-panel')?.classList.add('hidden');
         collectionPanel.classList.remove('hidden');
         renderCollectionPanel();
     }

@@ -5,11 +5,14 @@
 const PARTY_STORAGE_KEY = 'pokemonShotsPartyState';
 const PARTY_DEFAULT_SETTINGS_KEY = 'pokemonShotsPartyDefaultSettings';
 const PARTY_PICK_SIZE = 6;
+const PARTY_DEFAULT_MINI_GAME_PIXELATION = 14;
 const PARTY_DEFAULT_SETTINGS = {
     poolRatios: {
         common: 0.5,
         uncommon: 0.5
     },
+    miniGameEnabled: true,
+    miniGamePixelation: PARTY_DEFAULT_MINI_GAME_PIXELATION,
     draftOptionCount: PARTY_PICK_SIZE,
     drinkValues: {
         ownedCard: 1,
@@ -177,6 +180,13 @@ function createPartyMode() {
                 common: clampNumber(settings.poolRatios?.common, 0, 1, defaults.poolRatios.common),
                 uncommon: clampNumber(settings.poolRatios?.uncommon, 0, 1, defaults.poolRatios.uncommon)
             },
+            miniGameEnabled: settings.miniGameEnabled !== false,
+            miniGamePixelation: Math.round(clampNumber(
+                settings.miniGamePixelation,
+                6,
+                40,
+                defaults.miniGamePixelation
+            )),
             draftOptionCount: Math.round(clampNumber(settings.draftOptionCount, 2, 12, defaults.draftOptionCount)),
             drinkValues: Object.fromEntries(
                 Object.entries(defaults.drinkValues).map(([key, fallback]) => [
@@ -323,6 +333,7 @@ function createPartyMode() {
         document.getElementById('opening-area')?.classList.add('hidden');
         document.querySelector('.admin-dashboard')?.classList.add('hidden');
         document.querySelector('.collection-panel')?.classList.add('hidden');
+        document.querySelector('.guess-card-panel')?.classList.add('hidden');
     }
 
     function showPanel() {
@@ -333,6 +344,11 @@ function createPartyMode() {
     }
 
     function showBoosterSelection() {
+        if (state?.active && !state.draft && !state.x2Selection && canCurrentUserAccessParty()) {
+            window.pokemonShotsApp?.showPartyBoosterSelection?.();
+            return;
+        }
+
         panel?.classList.add('hidden');
         document.getElementById('opening-area')?.classList.add('hidden');
         document.querySelector('.stats-panel')?.classList.add('hidden');
@@ -341,18 +357,6 @@ function createPartyMode() {
     }
 
     function showBoosterView() {
-        panel?.classList.add('hidden');
-
-        if (
-            state?.active &&
-            !state.draft &&
-            !state.x2Selection &&
-            canCurrentUserAccessParty() &&
-            window.pokemonShotsApp?.showLastPartyBoosterSummary?.()
-        ) {
-            return;
-        }
-
         showBoosterSelection();
     }
 
@@ -671,7 +675,60 @@ function createPartyMode() {
         return result;
     }
 
-    function scoreBooster(boosterCards) {
+    function getMiniGameX2(options = {}, opener) {
+        const result = options.miniGameResult;
+
+        if (!result?.success) {
+            return null;
+        }
+
+        return {
+            available: true,
+            applied: false,
+            skipped: false,
+            count: 1,
+            target: null,
+            bonus: 0,
+            applications: [],
+            decidedBy: opener.username,
+            source: 'mini-game',
+            card: {
+                key: `mini-game-${result.card?.key || result.card?.id || result.card?.name || Date.now()}`,
+                name: 'Mini-jeu silhouette',
+                pulledCardName: result.card?.name || 'Pokemon mystere'
+            }
+        };
+    }
+
+    function mergeX2Bonuses(x2Bonuses) {
+        const availableBonuses = x2Bonuses.filter(Boolean);
+
+        if (!availableBonuses.length) {
+            return null;
+        }
+
+        if (availableBonuses.length === 1) {
+            return availableBonuses[0];
+        }
+
+        const names = availableBonuses
+            .map(bonus => bonus.card?.name)
+            .filter(Boolean)
+            .join(' + ');
+
+        return {
+            ...availableBonuses[0],
+            count: availableBonuses.reduce((total, bonus) => total + (bonus.count || 1), 0),
+            sources: availableBonuses.map(bonus => bonus.source || 'x2-card'),
+            card: {
+                ...availableBonuses[0].card,
+                name: names || 'Bonus x2',
+                pulledCardName: names || 'Bonus x2'
+            }
+        };
+    }
+
+    function scoreBooster(boosterCards, options = {}) {
         if (!state?.active || state.draft || state.x2Selection) {
             return null;
         }
@@ -785,6 +842,22 @@ function createPartyMode() {
         const everyoneDrinks = recomputeEveryoneDrinks(distribution);
         const nextOpener = state.players[(state.openerIndex + 1) % state.players.length];
         const x2CardsInBooster = getX2CardsInBooster(boosterCards);
+        const cardX2 = x2CardsInBooster.length ? {
+            available: true,
+            applied: false,
+            skipped: false,
+            count: x2CardsInBooster.length,
+            target: null,
+            bonus: 0,
+            applications: [],
+            decidedBy: opener.username,
+            source: 'x2-card',
+            card: {
+                ...state.x2Card,
+                pulledCardName: x2CardsInBooster[0].name
+            }
+        } : null;
+        const miniGameX2 = getMiniGameX2(options, opener);
 
         const boosterRecord = {
             opener: opener.username,
@@ -792,19 +865,12 @@ function createPartyMode() {
             distribution,
             events,
             everyoneDrinks,
-            x2: x2CardsInBooster.length ? {
-                available: true,
-                applied: false,
-                skipped: false,
-                count: x2CardsInBooster.length,
-                target: null,
-                bonus: 0,
-                applications: [],
-                decidedBy: opener.username,
-                card: {
-                    ...state.x2Card,
-                    pulledCardName: x2CardsInBooster[0].name
-                }
+            x2: mergeX2Bonuses([cardX2, miniGameX2]),
+            miniGame: options.miniGameResult ? {
+                success: Boolean(options.miniGameResult.success),
+                attemptsUsed: options.miniGameResult.attemptsUsed || 0,
+                answer: options.miniGameResult.answer || '',
+                card: options.miniGameResult.card || null
             } : null,
             settings: getSettings(),
             cards: boosterCards.map(card => ({
@@ -932,6 +998,11 @@ function createPartyMode() {
                         ${renderSettingInput('commonRatio', 'Ratio communes', settings.poolRatios.common, 0.01, 0, 1)}
                         ${renderSettingInput('uncommonRatio', 'Ratio peu communes', settings.poolRatios.uncommon, 0.01, 0, 1)}
                         ${renderSettingInput('draftOptionCount', 'Choix par tour', settings.draftOptionCount, 1, 2, 12)}
+                        <label class="party-setting-field party-setting-toggle">
+                            <span>Mini-jeu avant booster</span>
+                            <input type="checkbox" name="miniGameEnabled" ${settings.miniGameEnabled ? 'checked' : ''}>
+                        </label>
+                        ${renderSettingInput('miniGamePixelation', 'Pixelisation mini-jeu', settings.miniGamePixelation, 1, 6, 40)}
                     </section>
                     <section>
                         <h4>Gorgees</h4>
@@ -971,6 +1042,14 @@ function createPartyMode() {
                 common: getNumberInputValue(root, 'commonRatio', fallbackSettings.poolRatios.common),
                 uncommon: getNumberInputValue(root, 'uncommonRatio', fallbackSettings.poolRatios.uncommon)
             },
+            miniGameEnabled: root?.querySelector('[name="miniGameEnabled"]')
+                ? root.querySelector('[name="miniGameEnabled"]').checked
+                : fallbackSettings.miniGameEnabled,
+            miniGamePixelation: getNumberInputValue(
+                root,
+                'miniGamePixelation',
+                fallbackSettings.miniGamePixelation || PARTY_DEFAULT_MINI_GAME_PIXELATION
+            ),
             draftOptionCount: getNumberInputValue(root, 'draftOptionCount', fallbackSettings.draftOptionCount),
             drinkValues: {
                 ownedCard: getNumberInputValue(root, 'ownedCardDrinks', fallbackSettings.drinkValues.ownedCard),
@@ -1169,6 +1248,9 @@ function createPartyMode() {
             bonus: result.x2.bonus || 0
         }] : []);
         const remainingUses = Math.max(0, totalUses - applications.length);
+        const pendingLabel = totalUses > 1
+            ? `${remainingUses} x2 restant${remainingUses > 1 ? 's' : ''} sur ${totalUses}`
+            : `${result.x2.card.name}: 1 x2 disponible`;
 
         if (!remainingUses) {
             return `
@@ -1182,7 +1264,7 @@ function createPartyMode() {
         return `
             <div class="party-x2-result">
                 <div>
-                    <strong>${result.x2.card.name} est sortie ${totalUses} fois: ${remainingUses} x2 restant${remainingUses > 1 ? 's' : ''}</strong>
+                    <strong>${pendingLabel}</strong>
                     <span>${result.x2.decidedBy} choisit quel joueur double ses gorgées sur ce booster.</span>
                 </div>
                 <div class="party-x2-targets">
@@ -1329,6 +1411,8 @@ function createPartyMode() {
         applyX2Target,
         hasPendingX2,
         isX2Card: (card) => Boolean(state?.x2Card && getCardKey(card) === state.x2Card.key),
+        isMiniGameEnabled: () => getSettings().miniGameEnabled !== false,
+        getMiniGamePixelation: () => getSettings().miniGamePixelation,
         getSummary,
         scoreBooster
     };

@@ -19,6 +19,11 @@ class PokemonShotsApp {
         this.currentBoosterData = [];
         this.currentBoosterIsParty = false;
         this.currentBoosterPartyScored = false;
+        this.currentPartyMiniGameResult = null;
+        this.partyMiniGameActive = false;
+        this.partyBoosterSelectionActive = false;
+        this.partyMiniGameContinueButton = null;
+        this.partyMiniGamePassButton = null;
         this.openingIntroTimeout = null;
         this.currentBoosterImagesReady = Promise.resolve();
         this.suppressNextOpeningClick = false;
@@ -172,7 +177,9 @@ class PokemonShotsApp {
         this.elements.openButton.disabled = !this.boosterOpener;
 
         if (this.boosterOpener) {
-            this.elements.openButton.textContent = 'Ouvrir un booster';
+            this.elements.openButton.textContent = this.partyBoosterSelectionActive && window.partyMode?.isActive?.()
+                ? 'Ouvrir le booster soirée'
+                : 'Ouvrir un booster';
         }
     }
 
@@ -182,6 +189,21 @@ class PokemonShotsApp {
         }
 
         this.elements.boosterSelection.querySelector('.party-selection-opener')?.remove();
+
+        if (!this.partyBoosterSelectionActive || !window.partyMode?.isActive?.()) {
+            this.updateAccountDependentUi();
+            return;
+        }
+
+        const openerBanner = this.createPartyOpenerBanner('Booster soirée pour', { force: true });
+        const boosterContainer = this.elements.boosterSelection.querySelector('.booster-container');
+
+        if (openerBanner && boosterContainer) {
+            openerBanner.classList.add('party-selection-opener');
+            boosterContainer.before(openerBanner);
+        }
+
+        this.updateAccountDependentUi();
     }
 
     placeStatsPanelAfterRecap() {
@@ -230,7 +252,9 @@ class PokemonShotsApp {
      */
     setupEventListeners() {
         // Ouvrir un booster
-        this.elements.openButton.addEventListener('click', () => this.openBooster());
+        this.elements.openButton.addEventListener('click', () => {
+            this.openBooster({ party: this.partyBoosterSelectionActive });
+        });
 
         // Révéler toutes les cartes
         this.elements.revealAllButton.addEventListener('click', () => this.revealAllBoosterCards());
@@ -285,9 +309,11 @@ class PokemonShotsApp {
      * est fermee pour permettre de relancer des boosters personnels.
      */
     showSet151View() {
+        this.partyBoosterSelectionActive = false;
         document.querySelector('.admin-dashboard')?.classList.add('hidden');
         document.querySelector('.collection-panel')?.classList.add('hidden');
         document.querySelector('.party-panel')?.classList.add('hidden');
+        document.querySelector('.guess-card-panel')?.classList.add('hidden');
 
         if (this.currentBoosterIsParty) {
             this.resetOpeningArea();
@@ -319,6 +345,19 @@ class PokemonShotsApp {
         this.updatePartyOpenerPreview();
     }
 
+    showPartyBoosterSelection() {
+        this.partyBoosterSelectionActive = Boolean(window.partyMode?.isActive?.());
+        this.resetOpeningArea();
+        document.querySelector('.admin-dashboard')?.classList.add('hidden');
+        document.querySelector('.collection-panel')?.classList.add('hidden');
+        document.querySelector('.party-panel')?.classList.add('hidden');
+        document.querySelector('.guess-card-panel')?.classList.add('hidden');
+        this.elements.openingArea?.classList.add('hidden');
+        this.elements.statsPanel?.classList.add('hidden');
+        this.elements.boosterSelection?.classList.remove('hidden');
+        this.updatePartyOpenerPreview();
+    }
+
     /**
      * Gère les raccourcis clavier de la zone d'ouverture.
      * @param {KeyboardEvent} event - Evénement clavier
@@ -327,9 +366,24 @@ class PokemonShotsApp {
         if (
             event.defaultPrevented ||
             event.repeat ||
-            this.isShortcutContextBlocked(event.target) ||
             !this.isOpeningAreaVisible()
         ) {
+            return;
+        }
+
+        if (this.partyMiniGameActive) {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                if (this.partyMiniGameContinueButton) {
+                    this.partyMiniGameContinueButton.click();
+                } else {
+                    this.partyMiniGamePassButton?.click();
+                }
+            }
+            return;
+        }
+
+        if (this.isShortcutContextBlocked(event.target)) {
             return;
         }
 
@@ -468,6 +522,7 @@ class PokemonShotsApp {
             return;
         }
         const isPartyBooster = Boolean(options.party && window.partyMode?.isActive());
+        this.partyBoosterSelectionActive = false;
 
         if (!isPartyBooster) {
             this.ensureDisplayedStatsFresh();
@@ -478,6 +533,8 @@ class PokemonShotsApp {
         this.currentBoosterData = booster;
         this.currentBoosterIsParty = isPartyBooster;
         this.currentBoosterPartyScored = false;
+        this.currentPartyMiniGameResult = null;
+        this.partyMiniGameActive = false;
 
         if (!isPartyBooster) {
             window.accounts?.recordBooster(booster, window.accounts?.getCurrentUser?.()?.username);
@@ -509,7 +566,408 @@ class PokemonShotsApp {
         
         this.elements.statsPanel.classList.add('hidden');
         
-        this.startSequentialOpening();
+        if (this.shouldStartPartyMiniGame()) {
+            this.startPartyMiniGame();
+        } else {
+            this.startSequentialOpening();
+        }
+    }
+
+    shouldStartPartyMiniGame() {
+        return Boolean(
+            this.currentBoosterIsParty &&
+            window.partyMode?.isMiniGameEnabled?.() &&
+            this.getCurrentSetPokemonNames().length
+        );
+    }
+
+    getCurrentSetPokemonNames() {
+        const cards = this.boosterOpener?.setData || [];
+        const seen = new Set();
+
+        return cards
+            .filter(card => {
+                const type = this.normalizeGuessText(card.type);
+                const rarity = this.normalizeGuessText(card.rarity);
+                const mappedRarity = this.boosterOpener?.getMappedRarity?.(card);
+
+                return (
+                    card?.name &&
+                    !type.includes('dresseur') &&
+                    !type.includes('trainer') &&
+                    !type.includes('energie') &&
+                    !type.includes('energy') &&
+                    mappedRarity !== 'trainer' &&
+                    mappedRarity !== 'energy' &&
+                    rarity !== 'trainer' &&
+                    rarity !== 'energy'
+                );
+            })
+            .map(card => this.getBasePokemonName(card.name))
+            .filter(name => {
+                const key = this.normalizeGuessText(name);
+                if (!key || seen.has(key)) {
+                    return false;
+                }
+
+                seen.add(key);
+                return true;
+            })
+            .sort((a, b) => a.localeCompare(b, 'fr'));
+    }
+
+    async getPartyMiniGameCandidates() {
+        const pokemonNames = this.getCurrentSetPokemonNames();
+
+        if (typeof window.loadMiniGameCardsForPokemonNames !== 'function') {
+            return this.getFallbackPartyMiniGameCandidates();
+        }
+
+        try {
+            const cards = await window.loadMiniGameCardsForPokemonNames(pokemonNames);
+            return cards.length ? cards : this.getFallbackPartyMiniGameCandidates();
+        } catch (error) {
+            console.warn('[Pokemon Shots] Chargement des cartes du mini-jeu echoue.', error);
+            return this.getFallbackPartyMiniGameCandidates();
+        }
+    }
+
+    getFallbackPartyMiniGameCandidates() {
+        const cards = this.boosterOpener?.setData || [];
+        const names = new Set(this.getCurrentSetPokemonNames().map(name => this.normalizeGuessText(name)));
+
+        return cards.filter(card => names.has(this.normalizeGuessText(this.getBasePokemonName(card.name))));
+    }
+
+    getPartyMiniGameAnswerOptions() {
+        return this.getCurrentSetPokemonNames();
+    }
+
+    pickPartyMiniGameCard(candidates, pokemonNames = this.getCurrentSetPokemonNames()) {
+        const candidatesByPokemon = new Map();
+
+        candidates.forEach(card => {
+            const key = this.normalizeGuessText(card.answerName || this.getBasePokemonName(card.name));
+            if (!key) {
+                return;
+            }
+
+            const group = candidatesByPokemon.get(key) || [];
+            group.push(card);
+            candidatesByPokemon.set(key, group);
+        });
+
+        const availablePokemon = pokemonNames
+            .map(name => ({
+                name,
+                key: this.normalizeGuessText(name)
+            }))
+            .filter(pokemon => candidatesByPokemon.has(pokemon.key));
+
+        const pickedPokemon = availablePokemon[Math.floor(Math.random() * availablePokemon.length)];
+        const cards = pickedPokemon ? candidatesByPokemon.get(pickedPokemon.key) : candidates;
+
+        return cards[Math.floor(Math.random() * cards.length)] || null;
+    }
+
+    async enrichPartyMiniGameCard(card) {
+        if (typeof window.loadMiniGameCardDetails !== 'function') {
+            return card;
+        }
+
+        try {
+            return await window.loadMiniGameCardDetails(card);
+        } catch (error) {
+            console.warn('[Pokemon Shots] Detail de la carte du mini-jeu indisponible.', error);
+            return card;
+        }
+    }
+
+    getCardImageUrl(card) {
+        return card?.imageUrl || `assets/images/cards/151/${card?.id}.jpg`;
+    }
+
+    pixelateMiniGameImage(img, imageUrl, pixelWidth = 14) {
+        const source = new Image();
+        if (/^https?:/i.test(imageUrl)) {
+            source.crossOrigin = 'anonymous';
+        }
+
+        source.onload = () => {
+            try {
+                const safePixelWidth = Math.max(4, Math.round(Number(pixelWidth) || 14));
+                const pixelHeight = Math.max(6, Math.round(safePixelWidth * 230 / 165));
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = safePixelWidth;
+                canvas.height = pixelHeight;
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(source, 0, 0, pixelWidth, pixelHeight);
+                img.src = canvas.toDataURL('image/png');
+                img.dataset.fullSrc = imageUrl;
+            } catch (error) {
+                img.dataset.fullSrc = imageUrl;
+            }
+        };
+
+        source.onerror = () => {
+            img.dataset.fullSrc = imageUrl;
+        };
+        source.src = imageUrl;
+    }
+
+
+    getBasePokemonName(name) {
+        return String(name || '')
+            .replace(/\s*[- ](?:ex|v|vmax|vstar|gx|lv\.?\s*x)$/i, '')
+            .replace(/\s*\(.*?\)\s*$/i, '')
+            .trim();
+    }
+
+    normalizeGuessText(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+    }
+
+    isCorrectMiniGameGuess(guess, card) {
+        const normalizedGuess = this.normalizeGuessText(guess);
+        const validAnswers = [
+            card.answerName,
+            card.name,
+            this.getBasePokemonName(card.name)
+        ].map(answer => this.normalizeGuessText(answer));
+
+        return Boolean(normalizedGuess && validAnswers.includes(normalizedGuess));
+    }
+
+    async startPartyMiniGame() {
+        this.clearOpeningIntroTimeout();
+        this.partyMiniGameActive = true;
+        this.partyMiniGameContinueButton = null;
+        this.partyMiniGamePassButton = null;
+        this.elements.openingArea?.classList.add('party-mini-game-active');
+        this.elements.cardsContainer.innerHTML = `
+            <div class="party-mini-game">
+                <section class="party-mini-game-dialog">
+                    <div class="party-mini-game-content">
+                        <p>Mini-jeu</p>
+                        <h2>Chargement de la carte mystere...</h2>
+                        <span>On pioche dans toutes les cartes TCGdex du Pokemon.</span>
+                    </div>
+                </section>
+            </div>
+        `;
+        this.elements.cardsContainer.classList.add('opening-sequence');
+        this.elements.cardsContainer.classList.remove('recap-grid');
+        this.updateOpeningControls();
+
+        const candidates = await this.getPartyMiniGameCandidates();
+        let card = this.pickPartyMiniGameCard(candidates);
+
+        if (!card) {
+            this.partyMiniGameActive = false;
+            this.elements.openingArea?.classList.remove('party-mini-game-active');
+            this.startSequentialOpening();
+            return;
+        }
+
+        card = await this.enrichPartyMiniGameCard(card);
+
+        this.elements.cardsContainer.innerHTML = '';
+
+        let attemptsLeft = 2;
+        let attemptsUsed = 0;
+        let lastAnswer = '';
+        const rejectedAnswers = new Set();
+        const answerOptions = this.getPartyMiniGameAnswerOptions();
+        const stage = document.createElement('div');
+        stage.className = 'party-mini-game';
+
+        const openerBanner = this.createPartyOpenerBanner('Mini-jeu pour', { force: true });
+        if (openerBanner) {
+            stage.appendChild(openerBanner);
+        }
+
+        const imageUrl = this.getCardImageUrl(card);
+        stage.insertAdjacentHTML('beforeend', `
+            <section class="party-mini-game-dialog">
+                <div class="party-mini-game-card">
+                    <img class="is-pixelated" src="${imageUrl}" alt="Carte mystere">
+                </div>
+                <div class="party-mini-game-content">
+                    <p>Mini-jeu</p>
+                    <h2>Quel Pokemon est sur cette carte ?</h2>
+                    <span class="party-mini-game-attempts">2 tentatives restantes</span>
+                    <form class="party-mini-game-form">
+                        <label>
+                            <span>Nom du Pokemon</span>
+                            <input type="search" autocomplete="off" required>
+                        </label>
+                        <div class="party-mini-game-suggestions" role="listbox"></div>
+                        <div class="party-mini-game-actions">
+                            <button type="submit">Valider</button>
+                            <button type="button" class="party-mini-game-pass">Passer</button>
+                        </div>
+                    </form>
+                    <p class="party-mini-game-feedback" aria-live="polite"></p>
+                </div>
+            </section>
+        `);
+
+        this.elements.cardsContainer.appendChild(stage);
+
+        const form = stage.querySelector('.party-mini-game-form');
+        const input = stage.querySelector('input');
+        const attempts = stage.querySelector('.party-mini-game-attempts');
+        const feedback = stage.querySelector('.party-mini-game-feedback');
+        const suggestions = stage.querySelector('.party-mini-game-suggestions');
+        this.partyMiniGamePassButton = stage.querySelector('.party-mini-game-pass');
+        const mysteryImage = stage.querySelector('.party-mini-game-card img');
+        if (mysteryImage) {
+            mysteryImage.onerror = () => handleImageError(mysteryImage, card);
+            this.pixelateMiniGameImage(
+                mysteryImage,
+                imageUrl,
+                window.partyMode?.getMiniGamePixelation?.() || 14
+            );
+        }
+
+        const renderSuggestions = () => {
+            const query = this.normalizeGuessText(input.value);
+            if (!query) {
+                suggestions.innerHTML = '';
+                return;
+            }
+
+            const matches = answerOptions
+                .filter(name => {
+                    const normalizedName = this.normalizeGuessText(name);
+                    return !rejectedAnswers.has(normalizedName) && normalizedName.includes(query);
+                })
+                .slice(0, 8);
+
+            suggestions.innerHTML = matches.map(name => `
+                <button type="button" role="option" data-suggestion="${name}">${name}</button>
+            `).join('');
+        };
+
+        input.addEventListener('input', renderSuggestions);
+        input.addEventListener('focus', renderSuggestions);
+        suggestions.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-suggestion]');
+            if (!button) {
+                return;
+            }
+
+            input.value = button.dataset.suggestion;
+            suggestions.innerHTML = '';
+            input.focus();
+        });
+        renderSuggestions();
+
+        const finish = (success, answer = '') => {
+            this.finishPartyMiniGame(stage, card, {
+                success,
+                attemptsUsed,
+                answer
+            });
+        };
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const answer = input.value.trim();
+            if (!answer) {
+                return;
+            }
+
+            attemptsUsed++;
+            lastAnswer = answer;
+
+            if (this.isCorrectMiniGameGuess(answer, card)) {
+                finish(true, answer);
+                return;
+            }
+
+            rejectedAnswers.add(this.normalizeGuessText(answer));
+            attemptsLeft--;
+            if (attemptsLeft <= 0) {
+                finish(false, answer);
+                return;
+            }
+
+            attempts.textContent = '1 tentative restante';
+            feedback.textContent = 'Pas celui-la. Encore une tentative.';
+            input.value = '';
+            renderSuggestions();
+            input.focus();
+        });
+
+        this.partyMiniGamePassButton?.addEventListener('click', () => {
+            finish(false, lastAnswer);
+        });
+
+        input.focus();
+    }
+
+    finishPartyMiniGame(stage, card, result) {
+        const priceMarkup = renderCardmarketPriceMarkup?.(card, 'mini-card-price') || '';
+        const setDetails = [
+            card.setName,
+            card.localId ? `#${card.localId}` : null,
+            card.rarity
+        ].filter(Boolean).join(' - ');
+
+        this.currentPartyMiniGameResult = {
+            ...result,
+            card: {
+                key: card.localId || card.number || card.id || card.name,
+                id: card.id,
+                localId: card.localId,
+                name: card.answerName || this.getBasePokemonName(card.name),
+                shownCardName: card.name,
+                number: card.number,
+                imageUrl: card.imageUrl,
+                type: card.type,
+                setName: card.setName || null,
+                rarity: card.rarity || null
+            }
+        };
+
+        const image = stage.querySelector('.party-mini-game-card img');
+        const content = stage.querySelector('.party-mini-game-content');
+        if (image) {
+            image.classList.remove('is-pixelated');
+            if (image.dataset.fullSrc) {
+                image.src = image.dataset.fullSrc;
+            }
+        }
+
+        if (content) {
+            content.innerHTML = `
+                <p>${result.success ? 'Trouve !' : 'Reponse'}</p>
+                <h2>${card.answerName || this.getBasePokemonName(card.name)}</h2>
+                <div class="party-mini-game-card-meta">
+                    <strong>${card.name}</strong>
+                    ${setDetails ? `<span>${setDetails}</span>` : ''}
+                    ${priceMarkup}
+                </div>
+                <span>${result.success ? 'Bonus x2 gagne pour ce booster.' : 'La carte mystere est revelee avant le booster.'}</span>
+                <button type="button" class="party-mini-game-continue">Ouvrir le booster</button>
+            `;
+        }
+
+        this.partyMiniGamePassButton = null;
+        this.partyMiniGameContinueButton = stage.querySelector('.party-mini-game-continue');
+        this.partyMiniGameContinueButton?.addEventListener('click', () => {
+            this.partyMiniGameActive = false;
+            this.partyMiniGameContinueButton = null;
+            this.elements.openingArea?.classList.remove('party-mini-game-active');
+            this.startSequentialOpening();
+        });
     }
 
     /**
@@ -711,7 +1169,9 @@ class PokemonShotsApp {
         });
 
         if (this.currentBoosterIsParty && !this.currentBoosterPartyScored) {
-            const partyResult = window.partyMode.scoreBooster(this.currentBoosterData || []);
+            const partyResult = window.partyMode.scoreBooster(this.currentBoosterData || [], {
+                miniGameResult: this.currentPartyMiniGameResult
+            });
             this.currentBoosterPartyScored = true;
             this.renderPartyResultInSummary(partyResult);
         }
@@ -822,6 +1282,7 @@ class PokemonShotsApp {
                     <span>Une gorgée pour chaque joueur.</span>
                 </div>
             ` : ''}
+            ${this.getPartyMiniGameResultMarkup(result)}
             <div class="party-drink-grid">
                 ${Object.entries(result.distribution).map(([username, drinks]) => `
                     <article>
@@ -831,6 +1292,19 @@ class PokemonShotsApp {
                 `).join('')}
             </div>
             ${this.getPartyX2ResultMarkup(result)}
+        `;
+    }
+
+    getPartyMiniGameResultMarkup(result) {
+        if (!result.miniGame?.card) {
+            return '';
+        }
+
+        return `
+            <div class="party-x2-result ${result.miniGame.success ? 'is-applied' : ''}">
+                <strong>Mini-jeu: ${result.miniGame.card.name}</strong>
+                <span>${result.miniGame.success ? 'Bonne reponse, un x2 est disponible sur ce booster.' : 'Pas de x2 cette fois.'}</span>
+            </div>
         `;
     }
 
@@ -845,6 +1319,9 @@ class PokemonShotsApp {
             bonus: result.x2.bonus || 0
         }] : []);
         const remainingUses = Math.max(0, totalUses - applications.length);
+        const pendingLabel = totalUses > 1
+            ? `${remainingUses} x2 restant${remainingUses > 1 ? 's' : ''} sur ${totalUses}`
+            : `${result.x2.card.name}: 1 x2 disponible`;
 
         if (!remainingUses) {
             return `
@@ -858,7 +1335,7 @@ class PokemonShotsApp {
         return `
             <div class="party-x2-result">
                 <div>
-                    <strong>${result.x2.card.name} est sortie ${totalUses} fois: ${remainingUses} x2 restant${remainingUses > 1 ? 's' : ''}</strong>
+                    <strong>${pendingLabel}</strong>
                     <span>${result.x2.decidedBy} choisit quel joueur double ses gorgées sur ce booster.</span>
                 </div>
                 <div class="party-x2-targets">
@@ -975,7 +1452,12 @@ class PokemonShotsApp {
         this.currentBoosterData = [];
         this.currentBoosterIsParty = false;
         this.currentBoosterPartyScored = false;
+        this.currentPartyMiniGameResult = null;
+        this.partyMiniGameActive = false;
+        this.partyMiniGameContinueButton = null;
+        this.partyMiniGamePassButton = null;
         this.elements.cardsContainer.innerHTML = '';
+        this.elements.openingArea?.classList.remove('party-mini-game-active');
         document.querySelector('.party-inline-result')?.remove();
         this.elements.statsPanel?.classList.add('hidden');
         this.elements.cardsContainer.classList.remove('opening-sequence', 'recap-grid');

@@ -626,6 +626,329 @@ h2 {
     box-shadow: 0 0 0 3px rgba(255, 176, 0, 0.45), 0 18px 40px rgba(0, 0, 0, 0.28);
 }
 
+.booster-opening.party-mini-game-active .buttons-container {
+    display: none;
+}
+
+.party-mini-game {
+    display: grid;
+    justify-items: center;
+    gap: 1rem;
+    width: min(920px, 100%);
+}
+
+.party-mini-game-dialog {
+    display: grid;
+    grid-template-columns: minmax(180px, 260px) minmax(260px, 1fr);
+    align-items: center;
+    gap: 1.25rem;
+    width: 100%;
+    border: 1px solid var(--line-color);
+    border-radius: 8px;
+    background: var(--panel-color);
+    box-shadow: var(--shadow-soft);
+    padding: 1rem;
+}
+
+.party-mini-game-card {
+    overflow: hidden;
+    border-radius: 8px;
+    background: #dbe4f3;
+    box-shadow: 0 18px 36px rgba(36, 48, 67, 0.22);
+}
+
+.party-mini-game-card img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 165 / 230;
+    object-fit: cover;
+    transition: filter 0.45s ease, transform 0.45s ease;
+}
+
+.party-mini-game-card img.is-pixelated {
+    filter: blur(1px) contrast(1.35) saturate(1.25);
+    image-rendering: pixelated;
+    transform: scale(1.08);
+}
+
+.party-mini-game-content {
+    display: grid;
+    gap: 0.8rem;
+    min-width: 0;
+}
+
+.party-mini-game-content p {
+    margin: 0;
+    color: #777;
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.party-mini-game-content h2 {
+    margin: 0;
+    text-align: left;
+}
+
+.party-mini-game-content h2::after {
+    margin-left: 0;
+}
+
+.party-mini-game-content > span,
+.party-mini-game-feedback {
+    color: #666;
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.party-mini-game-card-meta {
+    display: grid;
+    justify-items: start;
+    gap: 0.35rem;
+    border-radius: 8px;
+    background: #f6f7fb;
+    border: 1px solid var(--line-color);
+    padding: 0.65rem 0.75rem;
+}
+
+.party-mini-game-card-meta strong {
+    color: var(--primary-color);
+}
+
+.party-mini-game-card-meta span {
+    color: #666;
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.party-mini-game-form {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.party-mini-game-form label {
+    display: grid;
+    gap: 0.35rem;
+    color: #555;
+    font-weight: 800;
+}
+
+.party-mini-game-form input {
+    min-height: 2.8rem;
+    border: 1px solid #cbd6e8;
+    border-radius: 8px;
+    font: inherit;
+    padding: 0.65rem 0.75rem;
+}
+
+.party-mini-game-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    min-height: 2rem;
+}
+
+.party-mini-game-suggestions button {
+    border: 1px solid var(--line-color);
+    border-radius: 999px;
+    background: #edf3ff;
+    color: var(--ink-color);
+    cursor: pointer;
+    font-weight: 800;
+    padding: 0.4rem 0.65rem;
+}
+
+.party-mini-game-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.party-mini-game-actions button,
+.party-mini-game-continue {
+    border: 0;
+    border-radius: 999px;
+    background: var(--secondary-color);
+    color: white;
+    cursor: pointer;
+    font-weight: 900;
+    padding: 0.75rem 1rem;
+}
+
+.party-mini-game-actions .party-mini-game-pass {
+    background: #edf3ff;
+    color: var(--ink-color);
+    border: 1px solid var(--line-color);
+}
+
+.guess-card-panel {
+    display: grid;
+    gap: 1rem;
+}
+
+.guess-card-header,
+.guess-card-settings {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.guess-card-header p {
+    color: #777;
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.guess-card-header h2 {
+    margin: 0;
+    text-align: left;
+}
+
+.guess-card-header h2::after {
+    margin-left: 0;
+}
+
+.guess-card-header button,
+.guess-card-settings button,
+.guess-card-form button,
+#guess-card-next {
+    border: 0;
+    border-radius: 999px;
+    background: var(--secondary-color);
+    color: white;
+    cursor: pointer;
+    font-weight: 900;
+    padding: 0.75rem 1rem;
+}
+
+.guess-card-settings,
+.guess-card-stage {
+    border: 1px solid var(--line-color);
+    border-radius: 8px;
+    background: var(--panel-color);
+    box-shadow: var(--shadow-soft);
+    padding: 1rem;
+}
+
+.guess-card-settings {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.guess-card-settings label {
+    display: grid;
+    gap: 0.35rem;
+    color: #555;
+    font-size: 0.85rem;
+    font-weight: 900;
+}
+
+.guess-card-settings select,
+.guess-card-settings input,
+.guess-card-form input {
+    min-height: 2.7rem;
+    border: 1px solid #cbd6e8;
+    border-radius: 8px;
+    background: white;
+    font: inherit;
+    padding: 0.6rem 0.7rem;
+}
+
+.guess-card-play {
+    display: grid;
+    grid-template-columns: minmax(190px, 280px) minmax(280px, 1fr);
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.guess-card-image {
+    overflow: hidden;
+    border-radius: 8px;
+    background: #dbe4f3;
+    box-shadow: 0 18px 36px rgba(36, 48, 67, 0.22);
+}
+
+.guess-card-image img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 165 / 230;
+    object-fit: cover;
+}
+
+.guess-card-image img.is-pixelated {
+    filter: blur(1px) contrast(1.35) saturate(1.25);
+    image-rendering: pixelated;
+    transform: scale(1.08);
+}
+
+.guess-card-content,
+.guess-card-form {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.guess-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.guess-card-actions #guess-card-reveal {
+    background: #edf3ff;
+    color: var(--ink-color);
+    border: 1px solid var(--line-color);
+}
+
+.guess-card-content p {
+    margin: 0;
+    color: #777;
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.guess-card-content h3 {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 1.65rem;
+}
+
+.guess-card-content > span,
+.guess-card-feedback,
+.guess-card-empty {
+    color: #666;
+    font-weight: 800;
+}
+
+.guess-card-form label {
+    display: grid;
+    gap: 0.35rem;
+    color: #555;
+    font-weight: 800;
+}
+
+.guess-card-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    min-height: 2rem;
+}
+
+.guess-card-suggestions button {
+    border: 1px solid var(--line-color);
+    border-radius: 999px;
+    background: #edf3ff;
+    color: var(--ink-color);
+    cursor: pointer;
+    font-weight: 800;
+    padding: 0.4rem 0.65rem;
+}
+
 .buttons-container {
     display: flex;
     justify-content: center;
@@ -1819,6 +2142,13 @@ nav li button:hover {
     padding: 0.45rem 0.5rem;
 }
 
+.party-setting-toggle input {
+    justify-self: end;
+    width: 1.2rem;
+    height: 1.2rem;
+    accent-color: var(--secondary-color);
+}
+
 .party-active-settings {
     display: grid;
     gap: 0.75rem;
@@ -2319,6 +2649,30 @@ footer {
     .party-header {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .party-mini-game-dialog {
+        grid-template-columns: 1fr;
+    }
+
+    .party-mini-game-card {
+        width: min(220px, 75vw);
+        justify-self: center;
+    }
+
+    .guess-card-header,
+    .guess-card-settings {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .guess-card-play {
+        grid-template-columns: 1fr;
+    }
+
+    .guess-card-image {
+        width: min(240px, 75vw);
+        justify-self: center;
     }
 }
 
