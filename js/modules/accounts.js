@@ -363,9 +363,10 @@ function createAccountModule() {
         };
 
         db.boosters.unshift(entry);
+        addCardsToCollectionInDb(db, username, cards, entry.openedAt);
         saveAccountDb(db);
-        addCardsToCollection(username, cards);
         renderAdminPanel();
+        renderCollectionPanel();
         return entry;
     }
 
@@ -1189,6 +1190,9 @@ function createAccountModule() {
     async function init(options = {}) {
         onSessionChange = options.onSessionChange || null;
         await window.sharedStore?.hydrate?.([ACCOUNT_DB_KEY]);
+        const db = loadAccountDb();
+        rebuildCollectionsFromBoosters(db);
+        saveAccountDb(db);
         currentUser = loadAccountSession();
         renderAccountUi();
         ensureLoginModal();

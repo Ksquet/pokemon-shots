@@ -2,6 +2,7 @@
     const SUPABASE_URL = 'https://aznkndwhphthdinyovom.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_da8dencVZdr1qXRun905pA_s9w1LLkJ';
     const TABLE_NAME = 'app_state';
+    const saveQueues = new Map();
 
     function getEndpoint(id = '') {
         const base = `${SUPABASE_URL}/rest/v1/${TABLE_NAME}`;
@@ -47,7 +48,28 @@
             throw new Error(`Supabase save failed (${response.status}): ${await response.text()}`);
         }
 
-        console.info(`[Pokemon Shots] Données partagées sauvegardées: ${id}`);
+        console.info(`[Pokemon Shots] Donnees partagees sauvegardees: ${id}`);
+    }
+
+    function queueSave(id, task) {
+        const previousSave = saveQueues.get(id) || Promise.resolve();
+        const nextSave = previousSave
+            .catch(() => {})
+            .then(task);
+
+        const trackedSave = nextSave.finally(() => {
+            if (saveQueues.get(id) === trackedSave) {
+                saveQueues.delete(id);
+            }
+        });
+
+        saveQueues.set(id, trackedSave);
+
+        return nextSave;
+    }
+
+    function saveQueued(id, data) {
+        return queueSave(id, () => save(id, data));
     }
 
     async function hydrate(ids) {
@@ -57,13 +79,13 @@
 
                 if (remoteData !== null) {
                     localStorage.setItem(id, JSON.stringify(remoteData));
-                    console.info(`[Pokemon Shots] Données partagées chargées: ${id}`);
+                    console.info(`[Pokemon Shots] Donnees partagees chargees: ${id}`);
                     return;
                 }
 
                 const localData = localStorage.getItem(id);
                 if (localData) {
-                    await save(id, JSON.parse(localData));
+                    await saveQueued(id, JSON.parse(localData));
                 }
             } catch (error) {
                 console.warn(`[Pokemon Shots] Synchronisation Supabase indisponible pour ${id}.`, error);
@@ -74,19 +96,24 @@
     function saveFromLocalStorage(id) {
         try {
             const rawValue = localStorage.getItem(id);
-            const data = rawValue ? JSON.parse(rawValue) : null;
-            return save(id, data).catch(error => {
-                console.warn(`[Pokemon Shots] Sauvegarde Supabase échouée pour ${id}.`, error);
+            JSON.parse(rawValue || 'null');
+
+            return queueSave(id, () => {
+                const nextRawValue = localStorage.getItem(id);
+                const data = nextRawValue ? JSON.parse(nextRawValue) : null;
+                return save(id, data);
+            }).catch(error => {
+                console.warn(`[Pokemon Shots] Sauvegarde Supabase echouee pour ${id}.`, error);
             });
         } catch (error) {
-            console.warn(`[Pokemon Shots] Données locales invalides pour ${id}.`, error);
+            console.warn(`[Pokemon Shots] Donnees locales invalides pour ${id}.`, error);
             return Promise.resolve();
         }
     }
 
     window.sharedStore = {
         hydrate,
-        save,
+        save: saveQueued,
         saveFromLocalStorage
     };
 })();
