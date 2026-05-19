@@ -858,6 +858,46 @@ function createAccountModule() {
         });
     }
 
+    function renderAdminPartySettings() {
+        if (!window.partyMode?.getDefaultSettings || !window.partyMode?.renderSettings) {
+            return '';
+        }
+
+        return `
+            <form class="admin-reset-panel admin-party-settings-panel" id="admin-party-settings-form">
+                <div>
+                    <p>Mode soiree</p>
+                    <h3>Parametres par defaut des futures soirees</h3>
+                </div>
+                ${window.partyMode.renderSettings(window.partyMode.getDefaultSettings())}
+                <div class="admin-party-settings-actions">
+                    <button class="reset-button" type="submit">Sauvegarder les parametres par defaut</button>
+                    <p class="admin-reset-status" id="admin-party-settings-status" aria-live="polite"></p>
+                </div>
+            </form>
+        `;
+    }
+
+    function bindAdminPartySettingsForm() {
+        const form = adminPanel?.querySelector('#admin-party-settings-form');
+
+        if (!form || !window.partyMode?.collectSettings || !window.partyMode?.saveDefaultSettings) {
+            return;
+        }
+
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+
+            const settings = window.partyMode.collectSettings(form);
+            window.partyMode.saveDefaultSettings(settings);
+
+            const status = form.querySelector('#admin-party-settings-status');
+            if (status) {
+                status.textContent = 'Parametres sauvegardes pour les prochaines soirees.';
+            }
+        });
+    }
+
     function renderAdminPanel() {
         ensureAdminPanel();
         if (!adminPanel) {
@@ -891,6 +931,7 @@ function createAccountModule() {
                 <article><span>Boosters</span><strong>${summary.boosters}</strong></article>
                 <article><span>Hits</span><strong>${summary.hits}</strong></article>
             </div>
+            ${renderAdminPartySettings()}
             <form class="admin-reset-panel" id="admin-reset-form">
                 <div>
                     <p>Reset collections</p>
@@ -926,6 +967,7 @@ function createAccountModule() {
         `;
 
         adminPanel.querySelector('#admin-back-button')?.addEventListener('click', showBoosterView);
+        bindAdminPartySettingsForm();
         bindAdminResetForm(db);
     }
 

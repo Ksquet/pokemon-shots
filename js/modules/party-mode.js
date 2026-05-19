@@ -3,6 +3,7 @@
  */
 
 const PARTY_STORAGE_KEY = 'pokemonShotsPartyState';
+const PARTY_DEFAULT_SETTINGS_KEY = 'pokemonShotsPartyDefaultSettings';
 const PARTY_PICK_SIZE = 6;
 const PARTY_DEFAULT_SETTINGS = {
     poolRatios: {
@@ -90,6 +91,20 @@ function createPartyMode() {
 
     function cloneDefaultSettings() {
         return JSON.parse(JSON.stringify(PARTY_DEFAULT_SETTINGS));
+    }
+
+    function loadDefaultSettings() {
+        try {
+            return normalizeSettings(JSON.parse(localStorage.getItem(PARTY_DEFAULT_SETTINGS_KEY)) || {});
+        } catch (error) {
+            return cloneDefaultSettings();
+        }
+    }
+
+    function saveDefaultSettings(settings) {
+        const normalizedSettings = normalizeSettings(settings);
+        localStorage.setItem(PARTY_DEFAULT_SETTINGS_KEY, JSON.stringify(normalizedSettings));
+        return normalizedSettings;
     }
 
     function clampNumber(value, min, max, fallback) {
@@ -607,7 +622,7 @@ function createPartyMode() {
 
     function renderSetup() {
         const users = getSelectableUsers();
-        const settings = normalizeSettings();
+        const settings = loadDefaultSettings();
         return `
             <div class="party-header">
                 <div>
@@ -686,30 +701,34 @@ function createPartyMode() {
         `;
     }
 
-    function getNumberInputValue(name, fallback) {
-        const input = panel?.querySelector(`[name="${name}"]`);
+    function getNumberInputValue(root, name, fallback) {
+        const input = root?.querySelector(`[name="${name}"]`);
         return input ? input.value : fallback;
     }
 
-    function collectSettingsFromPanel() {
+    function collectSettingsFromRoot(root, fallbackSettings = PARTY_DEFAULT_SETTINGS) {
         return normalizeSettings({
             poolRatios: {
-                common: getNumberInputValue('commonRatio', PARTY_DEFAULT_SETTINGS.poolRatios.common),
-                uncommon: getNumberInputValue('uncommonRatio', PARTY_DEFAULT_SETTINGS.poolRatios.uncommon)
+                common: getNumberInputValue(root, 'commonRatio', fallbackSettings.poolRatios.common),
+                uncommon: getNumberInputValue(root, 'uncommonRatio', fallbackSettings.poolRatios.uncommon)
             },
-            draftOptionCount: getNumberInputValue('draftOptionCount', PARTY_DEFAULT_SETTINGS.draftOptionCount),
+            draftOptionCount: getNumberInputValue(root, 'draftOptionCount', fallbackSettings.draftOptionCount),
             drinkValues: {
-                ownedCard: getNumberInputValue('ownedCardDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.ownedCard),
-                holo: getNumberInputValue('holoDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.holo),
-                reverseHolo: getNumberInputValue('reverseHoloDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.reverseHolo),
-                doubleRare: getNumberInputValue('doubleRareDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.doubleRare),
-                ultraRare: getNumberInputValue('ultraRareDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.ultraRare),
-                illustrationRare: getNumberInputValue('illustrationRareDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.illustrationRare),
-                specialIllustrationRare: getNumberInputValue('specialIllustrationRareDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.specialIllustrationRare),
-                hyperRare: getNumberInputValue('hyperRareDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.hyperRare),
-                fallbackHit: getNumberInputValue('fallbackHitDrinks', PARTY_DEFAULT_SETTINGS.drinkValues.fallbackHit)
+                ownedCard: getNumberInputValue(root, 'ownedCardDrinks', fallbackSettings.drinkValues.ownedCard),
+                holo: getNumberInputValue(root, 'holoDrinks', fallbackSettings.drinkValues.holo),
+                reverseHolo: getNumberInputValue(root, 'reverseHoloDrinks', fallbackSettings.drinkValues.reverseHolo),
+                doubleRare: getNumberInputValue(root, 'doubleRareDrinks', fallbackSettings.drinkValues.doubleRare),
+                ultraRare: getNumberInputValue(root, 'ultraRareDrinks', fallbackSettings.drinkValues.ultraRare),
+                illustrationRare: getNumberInputValue(root, 'illustrationRareDrinks', fallbackSettings.drinkValues.illustrationRare),
+                specialIllustrationRare: getNumberInputValue(root, 'specialIllustrationRareDrinks', fallbackSettings.drinkValues.specialIllustrationRare),
+                hyperRare: getNumberInputValue(root, 'hyperRareDrinks', fallbackSettings.drinkValues.hyperRare),
+                fallbackHit: getNumberInputValue(root, 'fallbackHitDrinks', fallbackSettings.drinkValues.fallbackHit)
             }
         });
+    }
+
+    function collectSettingsFromPanel() {
+        return collectSettingsFromRoot(panel, loadDefaultSettings());
     }
 
     function renderDraft() {
@@ -916,6 +935,10 @@ function createPartyMode() {
         isActive: () => Boolean(state?.active && !state.draft),
         getCardOwner: (card) => state?.active && !state.draft ? getOwnerForCard(card) : null,
         getCurrentOpener: () => state?.active && !state.draft ? state.players[state.openerIndex] : null,
+        getDefaultSettings: loadDefaultSettings,
+        saveDefaultSettings,
+        renderSettings: (settings) => renderPartySettings(normalizeSettings(settings)),
+        collectSettings: (root) => collectSettingsFromRoot(root, loadDefaultSettings()),
         getSummary,
         scoreBooster
     };
