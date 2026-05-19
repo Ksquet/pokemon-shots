@@ -26,6 +26,23 @@ python -m http.server 8000
 
 Puis ouvrez : <http://localhost:8000>
 
+### Sync Supabase en local
+
+Par defaut, Supabase est desactive en local (`file://`, `localhost`, `127.0.0.1`).
+Les tests sur votre machine restent donc dans `localStorage` et ne lisent/ecrivent pas les donnees partagees de prod.
+
+Pour forcer la sync prod localement, ouvrez une fois :
+
+```text
+http://localhost:8000?sync=prod
+```
+
+Pour la couper a nouveau :
+
+```text
+http://localhost:8000?sync=off
+```
+
 ## Fonctionnement
 
 - Les données locales du set 151 sont chargées immédiatement pour que le bouton d'ouverture soit utilisable sans réseau.

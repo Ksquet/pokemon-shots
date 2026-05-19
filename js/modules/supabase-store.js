@@ -2,7 +2,40 @@
     const SUPABASE_URL = 'https://aznkndwhphthdinyovom.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_da8dencVZdr1qXRun905pA_s9w1LLkJ';
     const TABLE_NAME = 'app_state';
+    const SYNC_MODE_STORAGE_KEY = 'pokemonShotsSyncMode';
     const saveQueues = new Map();
+
+    function getSyncMode() {
+        const queryMode = new URLSearchParams(window.location.search).get('sync');
+        const savedMode = localStorage.getItem(SYNC_MODE_STORAGE_KEY);
+
+        if (queryMode === 'prod' || queryMode === 'off') {
+            localStorage.setItem(SYNC_MODE_STORAGE_KEY, queryMode);
+            return queryMode;
+        }
+
+        if (savedMode === 'prod' || savedMode === 'off') {
+            return savedMode;
+        }
+
+        const localHosts = new Set(['', 'localhost', '127.0.0.1', '::1']);
+        return localHosts.has(window.location.hostname) ? 'off' : 'prod';
+    }
+
+    function initLocalOnlyStore() {
+        console.info('[Pokemon Shots] Supabase desactive pour cet environnement. Donnees locales uniquement.');
+
+        window.sharedStore = {
+            hydrate: async () => {},
+            save: async () => {},
+            saveFromLocalStorage: () => Promise.resolve()
+        };
+    }
+
+    if (getSyncMode() === 'off') {
+        initLocalOnlyStore();
+        return;
+    }
 
     function getEndpoint(id = '') {
         const base = `${SUPABASE_URL}/rest/v1/${TABLE_NAME}`;
