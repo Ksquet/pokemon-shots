@@ -331,6 +331,7 @@ function createPartyMode() {
     function hideMainViews() {
         document.querySelector('.booster-selection')?.classList.add('hidden');
         document.getElementById('opening-area')?.classList.add('hidden');
+        document.querySelector('.stats-panel')?.classList.add('hidden');
         document.querySelector('.admin-dashboard')?.classList.add('hidden');
         document.querySelector('.collection-panel')?.classList.add('hidden');
         document.querySelector('.guess-card-panel')?.classList.add('hidden');
@@ -358,6 +359,16 @@ function createPartyMode() {
 
     function showBoosterView() {
         showBoosterSelection();
+    }
+
+    function refreshForSessionChange(options = {}) {
+        ensurePartyPanel();
+        render();
+
+        if (options.keepPanelVisible) {
+            hideMainViews();
+            panel?.classList.remove('hidden');
+        }
     }
 
     function getSelectableUsers() {
@@ -1408,6 +1419,7 @@ function createPartyMode() {
         saveDefaultSettings,
         renderSettings: (settings) => renderPartySettings(normalizeSettings(settings)),
         collectSettings: (root) => collectSettingsFromRoot(root, loadDefaultSettings()),
+        refreshForSessionChange,
         applyX2Target,
         hasPendingX2,
         isX2Card: (card) => Boolean(state?.x2Card && getCardKey(card) === state.x2Card.key),

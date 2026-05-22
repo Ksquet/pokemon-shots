@@ -225,6 +225,11 @@ class PokemonShotsApp {
 
     handleAccountSessionChange(user) {
         const nextUsername = user?.username || null;
+        const partyPanel = document.querySelector('.party-panel');
+        const wasOnPartyPanel = Boolean(partyPanel && !partyPanel.classList.contains('hidden'));
+        const hasSecondaryViewVisible = Boolean(
+            document.querySelector('.admin-dashboard:not(.hidden), .collection-panel:not(.hidden), .party-panel:not(.hidden), .guess-card-panel:not(.hidden)')
+        );
 
         if (nextUsername !== this.currentAccountUsername) {
             this.currentAccountUsername = nextUsername;
@@ -236,11 +241,15 @@ class PokemonShotsApp {
             }
 
             if (this.elements.boosterSelection) {
-                this.elements.boosterSelection.classList.remove('hidden');
+                this.elements.boosterSelection.classList.toggle('hidden', hasSecondaryViewVisible);
             }
 
             if (this.elements.statsPanel && !nextUsername) {
                 this.elements.statsPanel.classList.add('hidden');
+            }
+
+            if (wasOnPartyPanel) {
+                window.partyMode?.refreshForSessionChange?.({ keepPanelVisible: true });
             }
         }
 

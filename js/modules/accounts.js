@@ -601,6 +601,7 @@ function createAccountModule() {
 
         document.querySelector('.booster-selection')?.classList.add('hidden');
         document.getElementById('opening-area')?.classList.add('hidden');
+        document.querySelector('.stats-panel')?.classList.add('hidden');
         document.querySelector('.party-panel')?.classList.add('hidden');
         document.querySelector('.guess-card-panel')?.classList.add('hidden');
         collectionPanel?.classList.add('hidden');
@@ -609,6 +610,11 @@ function createAccountModule() {
     }
 
     function showBoosterView() {
+        if (window.pokemonShotsApp?.showSet151View) {
+            window.pokemonShotsApp.showSet151View();
+            return;
+        }
+
         if (adminPanel) {
             adminPanel.classList.add('hidden');
         }
@@ -649,6 +655,7 @@ function createAccountModule() {
 
         document.querySelector('.booster-selection')?.classList.add('hidden');
         document.getElementById('opening-area')?.classList.add('hidden');
+        document.querySelector('.stats-panel')?.classList.add('hidden');
         document.querySelector('.admin-dashboard')?.classList.add('hidden');
         document.querySelector('.party-panel')?.classList.add('hidden');
         document.querySelector('.guess-card-panel')?.classList.add('hidden');
@@ -1165,9 +1172,14 @@ function createAccountModule() {
         adminNavItem?.classList.toggle('hidden', !isAdmin);
 
         if (!isAdmin) {
+            const wasAdminPanelVisible = !adminPanel.classList.contains('hidden');
             adminPanel.classList.add('hidden');
             adminPanel.innerHTML = '';
-            document.querySelector('.booster-selection')?.classList.remove('hidden');
+
+            if (wasAdminPanelVisible) {
+                showBoosterView();
+            }
+
             return;
         }
 
