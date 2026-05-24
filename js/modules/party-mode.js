@@ -6,6 +6,10 @@ const PARTY_STORAGE_KEY = 'pokemonShotsPartyState';
 const PARTY_DEFAULT_SETTINGS_KEY = 'pokemonShotsPartyDefaultSettings';
 const PARTY_PICK_SIZE = 6;
 const PARTY_DEFAULT_MINI_GAME_PIXELATION = 14;
+const PARTY_OPENING_MODE_SHARED = 'shared-screen';
+const PARTY_OPENING_MODE_PLAYERS = 'player-screens';
+const PARTY_DEVICE_ID_KEY = 'pokemonShotsPartyDeviceId';
+const PARTY_OPENING_LOCK_DURATION = 2 * 60 * 1000;
 const PARTY_DEFAULT_SETTINGS = {
     poolRatios: {
         common: 0.5,
@@ -258,9 +262,37 @@ function createPartyMode() {
         }
 
         state.settings = normalizeSettings(state.settings);
+        state.openingMode = normalizeOpeningMode(state.openingMode);
+        state.openingLock = isOpeningLockActive(state.openingLock) ? state.openingLock : null;
         state.x2Selection ||= null;
 
         recalculatePlayerStatsFromHistory();
+    }
+
+    function normalizeOpeningMode(mode) {
+        return mode === PARTY_OPENING_MODE_PLAYERS
+            ? PARTY_OPENING_MODE_PLAYERS
+            : PARTY_OPENING_MODE_SHARED;
+    }
+
+    function getDeviceId() {
+        let deviceId = localStorage.getItem(PARTY_DEVICE_ID_KEY);
+
+        if (!deviceId) {
+            deviceId = `device-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            localStorage.setItem(PARTY_DEVICE_ID_KEY, deviceId);
+        }
+
+        return deviceId;
+    }
+
+    function isOpeningLockActive(lock = state?.openingLock) {
+        if (!lock?.createdAt) {
+            return false;
+        }
+
+        const lockTime = new Date(lock.createdAt).getTime();
+        return Number.isFinite(lockTime) && Date.now() - lockTime < PARTY_OPENING_LOCK_DURATION;
     }
 
     function shuffle(array) {
@@ -393,14 +425,16 @@ function createPartyMode() {
             currentUser?.role === 'admin' ||
             state.draft ||
             state.x2Selection ||
+            normalizeOpeningMode(state.openingMode) === PARTY_OPENING_MODE_SHARED ||
             isCurrentUserInParty()
         );
     }
 
-    function createInitialState(players, mode, settings) {
+    function createInitialState(players, mode, settings, openingMode = PARTY_OPENING_MODE_SHARED) {
         return {
             active: true,
             mode,
+            openingMode: normalizeOpeningMode(openingMode),
             settings: normalizeSettings(settings),
             players: shuffle(players).map(username => ({
                 username,
@@ -416,14 +450,15 @@ function createPartyMode() {
             x2Selection: null,
             x2Card: null,
             lastResult: null,
+            openingLock: null,
             boostersOpened: 0,
             boosterHistory: [],
             createdAt: new Date().toISOString()
         };
     }
 
-    function startParty(players, mode, settings) {
-        state = createInitialState(players, mode, settings);
+    function startParty(players, mode, settings, openingMode) {
+        state = createInitialState(players, mode, settings, openingMode);
 
         if (mode === 'random') {
             distributeRandom('common');
@@ -435,6 +470,88 @@ function createPartyMode() {
 
         savePartyState();
         render();
+    }
+
+    function canCurrentUserOpenCurrentBooster() {
+        if (!state?.active || state.draft || state.x2Selection) {
+            return false;
+        }
+
+        if (isOpeningLockActive()) {
+            return false;
+        }
+
+        if (normalizeOpeningMode(state.openingMode) !== PARTY_OPENING_MODE_PLAYERS) {
+            return true;
+        }
+
+        const currentUser = window.accounts?.getCurrentUser?.();
+        const opener = state.players[state.openerIndex];
+        return Boolean(currentUser?.role === 'admin' || currentUser?.username === opener?.username);
+    }
+
+    async function claimOpeningLock() {
+        if (window.sharedStore?.load) {
+            await refreshPartyStateFromSharedStore();
+        }
+
+        if (!canCurrentUserOpenCurrentBooster()) {
+            return null;
+        }
+
+        const opener = state.players[state.openerIndex];
+        const lock = {
+            id: `opening-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+            deviceId: getDeviceId(),
+            opener: opener?.username || null,
+            createdAt: new Date().toISOString()
+        };
+
+        state.openingLock = lock;
+        localStorage.setItem(PARTY_STORAGE_KEY, JSON.stringify(state));
+
+        if (!window.sharedStore?.save || !window.sharedStore?.load) {
+            return lock;
+        }
+
+        try {
+            await window.sharedStore.save(PARTY_STORAGE_KEY, state);
+            await refreshPartyStateFromSharedStore();
+            return state?.openingLock?.id === lock.id ? lock : null;
+        } catch (error) {
+            console.warn('[Pokemon Shots] Verrouillage du booster soiree echoue.', error);
+            savePartyState();
+            return lock;
+        }
+    }
+
+    function updateOpeningMode(mode) {
+        if (!state?.active) {
+            return;
+        }
+
+        state.openingMode = normalizeOpeningMode(mode);
+        savePartyState();
+        render();
+        window.pokemonShotsApp?.updatePartyOpenerPreview?.();
+    }
+
+    function skipCurrentBooster() {
+        if (!state?.active || state.draft || state.x2Selection || !state.players?.length) {
+            return;
+        }
+
+        const skippedPlayer = state.players[state.openerIndex];
+        state.openerIndex = (state.openerIndex + 1) % state.players.length;
+        state.openingLock = null;
+        state.lastSkippedTurn = {
+            username: skippedPlayer?.username || null,
+            skippedAt: new Date().toISOString(),
+            nextOpener: state.players[state.openerIndex]?.username || null
+        };
+        savePartyState();
+        render();
+        window.pokemonShotsApp?.updatePartyOpenerPreview?.();
     }
 
     function getAssignedKeys(rarityType) {
@@ -745,6 +862,25 @@ function createPartyMode() {
         }
 
         const opener = state.players[state.openerIndex];
+        const expectedOpener = options.openerUsername || null;
+        const expectedLockId = options.openingLockId || null;
+
+        if (expectedOpener && opener?.username !== expectedOpener) {
+            console.warn('[Pokemon Shots] Booster soiree ignore: le tour a change pendant l ouverture.', {
+                expectedOpener,
+                currentOpener: opener?.username
+            });
+            return null;
+        }
+
+        if (expectedLockId && state.openingLock?.id !== expectedLockId) {
+            console.warn('[Pokemon Shots] Booster soiree ignore: un autre ecran a pris le verrou.', {
+                expectedLockId,
+                currentLockId: state.openingLock?.id || null
+            });
+            return null;
+        }
+
         const distribution = Object.fromEntries(state.players.map(player => [player.username, 0]));
         const events = [];
         const debugRows = [];
@@ -898,8 +1034,13 @@ function createPartyMode() {
         state.boosterHistory ||= [];
         state.boosterHistory.push(boosterRecord);
         state.lastResult = boosterRecord;
+        window.accounts?.recordBooster?.(boosterCards, opener.username, {
+            source: 'party',
+            partyOpener: opener.username
+        });
         recalculatePlayerStatsFromHistory();
         state.openerIndex = (state.openerIndex + 1) % state.players.length;
+        state.openingLock = null;
         savePartyState();
         render();
         logDrinkCalculation(boosterRecord, debugRows);
@@ -983,6 +1124,9 @@ function createPartyMode() {
                     <h3>Préparation</h3>
                     <label><input type="radio" name="party-mode" value="draft" checked> Draft manuel</label>
                     <label><input type="radio" name="party-mode" value="random"> Distribution random</label>
+                    <h3>Ouverture</h3>
+                    <label><input type="radio" name="party-opening-mode" value="${PARTY_OPENING_MODE_SHARED}" checked> Un seul ecran pilote les boosters</label>
+                    <label><input type="radio" name="party-opening-mode" value="${PARTY_OPENING_MODE_PLAYERS}"> Chaque joueur ouvre sur son ecran</label>
                     ${renderPartySettings(settings)}
                     <button type="button" id="party-start">Lancer la soirée</button>
                 </section>
@@ -1034,8 +1178,19 @@ function createPartyMode() {
 
     function renderActivePartySettings() {
         const settings = getSettings();
+        const openingMode = normalizeOpeningMode(state?.openingMode);
         return `
             <section class="party-active-settings">
+                <details class="party-settings">
+                    <summary>Mode d'ouverture</summary>
+                    <div class="party-settings-grid">
+                        <section>
+                            <h4>Ouverture des boosters</h4>
+                            <label><input type="radio" name="active-party-opening-mode" value="${PARTY_OPENING_MODE_SHARED}" ${openingMode === PARTY_OPENING_MODE_SHARED ? 'checked' : ''}> Un seul ecran pilote les boosters</label>
+                            <label><input type="radio" name="active-party-opening-mode" value="${PARTY_OPENING_MODE_PLAYERS}" ${openingMode === PARTY_OPENING_MODE_PLAYERS ? 'checked' : ''}> Chaque joueur ouvre sur son ecran</label>
+                        </section>
+                    </div>
+                </details>
                 ${renderPartySettings(settings)}
                 <button type="button" id="party-save-settings">Appliquer aux prochains boosters</button>
             </section>
@@ -1292,18 +1447,26 @@ function createPartyMode() {
 
     function renderGame() {
         const opener = state.players[state.openerIndex];
+        const canOpen = canCurrentUserOpenCurrentBooster();
+        const isPlayerScreenMode = normalizeOpeningMode(state.openingMode) === PARTY_OPENING_MODE_PLAYERS;
+        const openBlockedMessage = isOpeningLockActive()
+            ? `${state.openingLock.opener || opener.username} est deja en train d'ouvrir ce booster.`
+            : 'Connecte-toi avec le joueur courant pour ouvrir ce booster sur cet ecran.';
         return `
             <div class="party-header">
                 <div>
                     <p>Partie en cours</p>
                     <h2>${opener.username} ouvre le prochain booster</h2>
+                    <span>${isPlayerScreenMode ? 'Chaque joueur ouvre sur son ecran.' : 'Un seul ecran pilote les boosters.'}</span>
                 </div>
                 <div class="party-actions">
                     <button type="button" id="party-back">Retour aux boosters</button>
-                    <button type="button" id="party-open-booster">Ouvrir le booster</button>
+                    <button type="button" id="party-open-booster" ${canOpen ? '' : 'disabled'}>Ouvrir le booster</button>
+                    <button type="button" id="party-skip-booster">Passer le tour</button>
                     <button type="button" id="party-stop">Arrêter</button>
                 </div>
             </div>
+            ${canOpen ? '' : `<p class="party-empty-cards">${openBlockedMessage}</p>`}
             ${renderPartyRoster()}
             ${renderX2ActiveCard()}
             ${renderActivePartySettings()}
@@ -1361,12 +1524,13 @@ function createPartyMode() {
         panel.querySelector('#party-start')?.addEventListener('click', () => {
             const players = [...panel.querySelectorAll('.party-user-list input:checked')].map(input => input.value);
             const mode = panel.querySelector('input[name="party-mode"]:checked')?.value || 'draft';
+            const openingMode = panel.querySelector('input[name="party-opening-mode"]:checked')?.value || PARTY_OPENING_MODE_SHARED;
             const settings = collectSettingsFromPanel();
             if (players.length < 2) {
                 alert('Sélectionne au moins 2 joueurs.');
                 return;
             }
-            startParty(players, mode, settings);
+            startParty(players, mode, settings, openingMode);
         });
         panel.querySelectorAll('.party-draft-card[data-card-key]').forEach(button => {
             button.addEventListener('click', () => pickDraftCard(button.dataset.cardKey));
@@ -1384,10 +1548,26 @@ function createPartyMode() {
             }
 
             state.settings = collectSettingsFromPanel();
+            state.openingMode = normalizeOpeningMode(
+                panel.querySelector('input[name="active-party-opening-mode"]:checked')?.value || state.openingMode
+            );
             savePartyState();
             render();
+            window.pokemonShotsApp?.updatePartyOpenerPreview?.();
+        });
+        panel.querySelectorAll('input[name="active-party-opening-mode"]').forEach(input => {
+            input.addEventListener('change', () => updateOpeningMode(input.value));
+        });
+        panel.querySelector('#party-skip-booster')?.addEventListener('click', () => {
+            skipCurrentBooster();
         });
         panel.querySelector('#party-open-booster')?.addEventListener('click', () => {
+            if (!canCurrentUserOpenCurrentBooster()) {
+                alert("Ce n'est pas a cet ecran d'ouvrir le booster.");
+                render();
+                return;
+            }
+
             panel?.classList.add('hidden');
             document.querySelector('.booster-selection')?.classList.add('hidden');
             app?.openBooster({ party: true });
@@ -1420,6 +1600,9 @@ function createPartyMode() {
         renderSettings: (settings) => renderPartySettings(normalizeSettings(settings)),
         collectSettings: (root) => collectSettingsFromRoot(root, loadDefaultSettings()),
         refreshForSessionChange,
+        refreshFromSharedStore: refreshPartyStateFromSharedStore,
+        canCurrentUserOpenCurrentBooster,
+        claimOpeningLock,
         applyX2Target,
         hasPendingX2,
         isX2Card: (card) => Boolean(state?.x2Card && getCardKey(card) === state.x2Card.key),

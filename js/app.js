@@ -19,6 +19,8 @@ class PokemonShotsApp {
         this.currentBoosterData = [];
         this.currentBoosterIsParty = false;
         this.currentBoosterPartyScored = false;
+        this.currentPartyBoosterOpener = null;
+        this.currentPartyOpeningLockId = null;
         this.currentPartyMiniGameResult = null;
         this.partyMiniGameActive = false;
         this.partyBoosterSelectionActive = false;
@@ -174,7 +176,12 @@ class PokemonShotsApp {
             return;
         }
 
-        this.elements.openButton.disabled = !this.boosterOpener;
+        const partyOpeningBlocked = Boolean(
+            this.partyBoosterSelectionActive &&
+            window.partyMode?.isActive?.() &&
+            !window.partyMode?.canCurrentUserOpenCurrentBooster?.()
+        );
+        this.elements.openButton.disabled = !this.boosterOpener || partyOpeningBlocked;
 
         if (this.boosterOpener) {
             this.elements.openButton.textContent = this.partyBoosterSelectionActive && window.partyMode?.isActive?.()
@@ -524,7 +531,7 @@ class PokemonShotsApp {
     /**
      * Ouvre un booster et affiche les cartes
      */
-    openBooster(options = {}) {
+    async openBooster(options = {}) {
         // Vérifier que l'ouvreur de boosters est initialisé
         if (!this.boosterOpener) {
             alert('Erreur: Impossible d\'ouvrir un booster pour le moment.');
@@ -532,6 +539,17 @@ class PokemonShotsApp {
         }
         const isPartyBooster = Boolean(options.party && window.partyMode?.isActive());
         this.partyBoosterSelectionActive = false;
+        let partyOpeningLock = null;
+
+        if (isPartyBooster) {
+            partyOpeningLock = await window.partyMode?.claimOpeningLock?.();
+
+            if (!partyOpeningLock) {
+                alert("Ce n'est pas a cet ecran d'ouvrir le booster.");
+                window.partyMode?.refreshForSessionChange?.({ keepPanelVisible: true });
+                return;
+            }
+        }
 
         if (!isPartyBooster) {
             this.ensureDisplayedStatsFresh();
@@ -542,6 +560,10 @@ class PokemonShotsApp {
         this.currentBoosterData = booster;
         this.currentBoosterIsParty = isPartyBooster;
         this.currentBoosterPartyScored = false;
+        this.currentPartyBoosterOpener = isPartyBooster
+            ? (window.partyMode?.getCurrentOpener?.()?.username || null)
+            : null;
+        this.currentPartyOpeningLockId = partyOpeningLock?.id || null;
         this.currentPartyMiniGameResult = null;
         this.partyMiniGameActive = false;
 
@@ -1146,7 +1168,7 @@ class PokemonShotsApp {
         this.showCurrentBoosterCard();
     }
 
-    showBoosterSummary() {
+    async showBoosterSummary() {
         this.clearOpeningIntroTimeout();
 
         if (!this.currentBoosterCards.length) {
@@ -1165,11 +1187,17 @@ class PokemonShotsApp {
         });
 
         if (this.currentBoosterIsParty && !this.currentBoosterPartyScored) {
+            this.currentBoosterPartyScored = true;
+            await window.partyMode?.refreshFromSharedStore?.();
             const partyResult = window.partyMode.scoreBooster(this.currentBoosterData || [], {
+                openerUsername: this.currentPartyBoosterOpener,
+                openingLockId: this.currentPartyOpeningLockId,
                 miniGameResult: this.currentPartyMiniGameResult
             });
-            this.currentBoosterPartyScored = true;
-            this.renderPartyResultInSummary(partyResult);
+
+            if (partyResult) {
+                this.renderPartyResultInSummary(partyResult);
+            }
         }
 
         this.showStatsAfterSummary();
@@ -1413,6 +1441,8 @@ class PokemonShotsApp {
         this.currentBoosterData = [];
         this.currentBoosterIsParty = false;
         this.currentBoosterPartyScored = false;
+        this.currentPartyBoosterOpener = null;
+        this.currentPartyOpeningLockId = null;
         this.currentPartyMiniGameResult = null;
         this.partyMiniGameActive = false;
         this.partyMiniGameContinueButton = null;

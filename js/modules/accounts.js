@@ -37,6 +37,25 @@ function createDefaultAccountDb() {
     };
 }
 
+function normalizeAccountDb(dbInput) {
+    const db = dbInput && typeof dbInput === 'object' ? dbInput : createDefaultAccountDb();
+    db.users = Array.isArray(db.users) ? db.users : [];
+    db.boosters = Array.isArray(db.boosters) ? db.boosters : [];
+    db.collections = db.collections && typeof db.collections === 'object' ? db.collections : {};
+    db.debugNextBooster = Array.isArray(db.debugNextBooster) ? db.debugNextBooster : [];
+
+    if (!db.users.some(user => user.username === ADMIN_USERNAME)) {
+        db.users.unshift({
+            username: ADMIN_USERNAME,
+            displayName: 'admin',
+            role: 'admin',
+            createdAt: new Date().toISOString()
+        });
+    }
+
+    return db;
+}
+
 function loadAccountDb() {
     try {
         const rawDb = localStorage.getItem(ACCOUNT_DB_KEY);
@@ -46,19 +65,11 @@ function loadAccountDb() {
             return db;
         }
 
-        const db = JSON.parse(rawDb);
-        db.users = Array.isArray(db.users) ? db.users : [];
-        db.boosters = Array.isArray(db.boosters) ? db.boosters : [];
-        db.collections = db.collections && typeof db.collections === 'object' ? db.collections : {};
-        db.debugNextBooster = Array.isArray(db.debugNextBooster) ? db.debugNextBooster : [];
+        const parsedDb = JSON.parse(rawDb);
+        const hadAdminUser = Array.isArray(parsedDb.users) && parsedDb.users.some(user => user.username === ADMIN_USERNAME);
+        const db = normalizeAccountDb(parsedDb);
 
-        if (!db.users.some(user => user.username === ADMIN_USERNAME)) {
-            db.users.unshift({
-                username: ADMIN_USERNAME,
-                displayName: 'admin',
-                role: 'admin',
-                createdAt: new Date().toISOString()
-            });
+        if (!hadAdminUser) {
             saveAccountDb(db);
         }
 
@@ -70,9 +81,12 @@ function loadAccountDb() {
     }
 }
 
-function saveAccountDb(db) {
+function saveAccountDb(db, options = {}) {
     localStorage.setItem(ACCOUNT_DB_KEY, JSON.stringify(db));
-    window.sharedStore?.saveFromLocalStorage?.(ACCOUNT_DB_KEY);
+
+    if (options.sync !== false) {
+        window.sharedStore?.saveFromLocalStorage?.(ACCOUNT_DB_KEY);
+    }
 }
 
 function loadAccountSession() {
@@ -275,6 +289,76 @@ function createAccountModule() {
             .forEach(entry => addCardsToCollectionInDb(db, entry.username, entry.cards, entry.openedAt));
     }
 
+    function mergeAccountDbs(...dbs) {
+        const merged = createDefaultAccountDb();
+        const usersByUsername = new Map();
+        const boostersById = new Map();
+
+        dbs.map(normalizeAccountDb).forEach(db => {
+            db.users.forEach(user => {
+                const username = normalizeUsername(user.username);
+                if (!username || usersByUsername.has(username)) {
+                    return;
+                }
+
+                usersByUsername.set(username, {
+                    ...user,
+                    username
+                });
+            });
+
+            db.boosters.forEach(entry => {
+                if (!entry?.id || boostersById.has(entry.id)) {
+                    return;
+                }
+
+                boostersById.set(entry.id, entry);
+            });
+
+            if (db.debugNextBooster?.length) {
+                merged.debugNextBooster = db.debugNextBooster;
+            }
+        });
+
+        merged.users = [...usersByUsername.values()];
+        merged.boosters = [...boostersById.values()].sort((a, b) => {
+            const bTime = new Date(b.openedAt || 0).getTime() || 0;
+            const aTime = new Date(a.openedAt || 0).getTime() || 0;
+            return bTime - aTime;
+        });
+        rebuildCollectionsFromBoosters(merged);
+        return merged;
+    }
+
+    function addBoosterEntryToDb(db, entry) {
+        if (db.boosters.some(existingEntry => existingEntry.id === entry.id)) {
+            return;
+        }
+
+        db.boosters.unshift(entry);
+        addCardsToCollectionInDb(db, entry.username, entry.cards, entry.openedAt);
+    }
+
+    function syncAccountDbWithRemote(localDb) {
+        if (!window.sharedStore?.load || !window.sharedStore?.save) {
+            return;
+        }
+
+        window.sharedStore.load(ACCOUNT_DB_KEY)
+            .then(remoteDb => {
+                const latestLocalDb = loadAccountDb();
+                const mergedDb = mergeAccountDbs(remoteDb, latestLocalDb, localDb);
+                saveAccountDb(mergedDb, { sync: false });
+                renderAdminPanel();
+                renderCollectionPanel();
+                return window.sharedStore.save(ACCOUNT_DB_KEY, mergedDb);
+            })
+            .catch(error => {
+                console.warn('[Pokemon Shots] Fusion distante des collections echouee.', error);
+                window.sharedStore?.saveFromLocalStorage?.(ACCOUNT_DB_KEY);
+            });
+    }
+
     function refreshCardPricesFromSetData(setCards = []) {
         const db = loadAccountDb();
         const cardsByKey = new Map(setCards.map(card => [getCardKey(card), card]));
@@ -364,7 +448,7 @@ function createAccountModule() {
         };
     }
 
-    function recordBooster(cards, usernameOverride = null) {
+    function recordBooster(cards, usernameOverride = null, options = {}) {
         const username = normalizeUsername(usernameOverride || currentUser?.username);
 
         if (!username) {
@@ -375,6 +459,8 @@ function createAccountModule() {
         const entry = {
             id: `booster-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             username,
+            source: options.source || 'solo',
+            partyOpener: options.partyOpener || '',
             openedAt: new Date().toISOString(),
             setId: '151',
             cardCount: cards.length,
@@ -394,9 +480,9 @@ function createAccountModule() {
             }))
         };
 
-        db.boosters.unshift(entry);
-        addCardsToCollectionInDb(db, username, cards, entry.openedAt);
-        saveAccountDb(db);
+        addBoosterEntryToDb(db, entry);
+        saveAccountDb(db, { sync: false });
+        syncAccountDbWithRemote(db);
         renderAdminPanel();
         renderCollectionPanel();
         return entry;
