@@ -289,6 +289,10 @@ function createAccountModule() {
             .forEach(entry => addCardsToCollectionInDb(db, entry.username, entry.cards, entry.openedAt));
     }
 
+    /**
+     * Fusionne les bases locales/distantes avant sauvegarde pour ne pas perdre
+     * les boosters ouverts quasi en meme temps depuis plusieurs ecrans.
+     */
     function mergeAccountDbs(...dbs) {
         const merged = createDefaultAccountDb();
         const usersByUsername = new Map();
@@ -339,6 +343,9 @@ function createAccountModule() {
         addCardsToCollectionInDb(db, entry.username, entry.cards, entry.openedAt);
     }
 
+    /**
+     * Sauvegarde anti-ecrasement: relit Supabase, fusionne, puis pousse.
+     */
     function syncAccountDbWithRemote(localDb) {
         if (!window.sharedStore?.load || !window.sharedStore?.save) {
             return;

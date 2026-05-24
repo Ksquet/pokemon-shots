@@ -3030,6 +3030,43 @@ button:hover,
     color: var(--secondary-color);
 }
 
+.party-evolution-bonus {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.party-evolution-bonus article {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.party-evolution-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 110px));
+    gap: 0.65rem;
+    align-items: start;
+}
+
+.party-evolution-cards figure {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    text-align: center;
+}
+
+.party-evolution-cards img {
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+.party-evolution-cards figcaption {
+    color: var(--text-color);
+    font-size: 0.74rem;
+    font-weight: 900;
+    line-height: 1.15;
+}
+
 .stat-card-value,
 .party-stats-overview strong,
 .party-player-stats dd,

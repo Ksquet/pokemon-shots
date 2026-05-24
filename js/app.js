@@ -1317,6 +1317,7 @@ class PokemonShotsApp {
                 <div class="party-x2-result is-applied">
                     <strong>${totalUses} x2 appliqué${totalUses > 1 ? 's' : ''}</strong>
                     <span>${applications.map(application => `${application.target} +${application.bonus}`).join(' / ')} grâce à ${result.x2.card.name}.</span>
+                    ${this.getEvolutionFamilyX2Markup(result.x2)}
                 </div>
             `;
         }
@@ -1327,6 +1328,7 @@ class PokemonShotsApp {
                     <strong>${pendingLabel}</strong>
                     <span>${result.x2.decidedBy} choisit quel joueur double ses gorgées sur ce booster.</span>
                 </div>
+                ${this.getEvolutionFamilyX2Markup(result.x2)}
                 <div class="party-x2-targets">
                     ${Object.entries(result.distribution).map(([username, drinks]) => `
                         <button type="button" class="party-x2-target" data-x2-target="${username}">
@@ -1335,6 +1337,32 @@ class PokemonShotsApp {
                         </button>
                     `).join('')}
                 </div>
+            </div>
+        `;
+    }
+
+    getEvolutionFamilyX2Markup(x2) {
+        const families = x2?.card?.evolutionFamilies || [];
+
+        if (!families.length) {
+            return '';
+        }
+
+        return `
+            <div class="party-evolution-bonus">
+                ${families.map(family => `
+                    <article>
+                        <strong>${family.label}</strong>
+                        <div class="party-evolution-cards">
+                            ${family.cards.map(card => `
+                                <figure>
+                                    <img src="${card.imageUrl || `assets/images/cards/151/${card.id}.jpg`}" alt="${card.name}">
+                                    <figcaption>${card.name}</figcaption>
+                                </figure>
+                            `).join('')}
+                        </div>
+                    </article>
+                `).join('')}
             </div>
         `;
     }

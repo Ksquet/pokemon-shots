@@ -275,6 +275,9 @@ function createPartyMode() {
             : PARTY_OPENING_MODE_SHARED;
     }
 
+    /**
+     * Identifie ce navigateur pour eviter que deux ecrans scorent le meme tour.
+     */
     function getDeviceId() {
         let deviceId = localStorage.getItem(PARTY_DEVICE_ID_KEY);
 
@@ -306,6 +309,24 @@ function createPartyMode() {
 
     function getCardKey(card) {
         return card.localId || card.number || card.id || card.name;
+    }
+
+    function normalizePokemonName(value) {
+        return String(value || '')
+            .replace(/\u2640/g, ' femelle')
+            .replace(/\u2642/g, ' male')
+            .replace(/\s*[- ](?:ex|v|vmax|vstar|gx|lv\.?\s*x)$/i, '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+    }
+
+    function getEvolutionFamilies() {
+        return Array.isArray(window.pokemonEvolutionFamilies)
+            ? window.pokemonEvolutionFamilies
+            : [];
     }
 
     function getCardLite(card) {
@@ -490,6 +511,10 @@ function createPartyMode() {
         return Boolean(currentUser?.role === 'admin' || currentUser?.username === opener?.username);
     }
 
+    /**
+     * Pose un verrou partage avant de generer un booster soiree.
+     * Le score revalide ce verrou pour ignorer les ouvertures concurrentes.
+     */
     async function claimOpeningLock() {
         if (window.sharedStore?.load) {
             await refreshPartyStateFromSharedStore();
@@ -851,7 +876,66 @@ function createPartyMode() {
             card: {
                 ...availableBonuses[0].card,
                 name: names || 'Bonus x2',
-                pulledCardName: names || 'Bonus x2'
+                pulledCardName: names || 'Bonus x2',
+                evolutionFamilies: availableBonuses.flatMap(bonus => bonus.card?.evolutionFamilies || [])
+            }
+        };
+    }
+
+    /**
+     * Detecte les familles a trois evolutions tirees dans le meme booster.
+     * Les familles elles-memes vivent dans js/data/evolution-families.js.
+     */
+    function getCompletedEvolutionFamilies(boosterCards = []) {
+        const boosterNames = new Set(boosterCards.map(card => normalizePokemonName(card.name)));
+        const cardsByName = new Map();
+
+        boosterCards.forEach(card => {
+            const key = normalizePokemonName(card.name);
+            if (!cardsByName.has(key)) {
+                cardsByName.set(key, card);
+            }
+        });
+
+        return getEvolutionFamilies()
+            .map(family => ({
+                label: family.join(' > '),
+                keys: family.map(normalizePokemonName)
+            }))
+            .filter(family => family.keys.every(key => boosterNames.has(key)))
+            .map(family => ({
+                ...family,
+                cards: family.keys.map(key => getCardLite(cardsByName.get(key)))
+            }));
+    }
+
+    function getEvolutionFamilyX2(boosterCards, opener) {
+        const completedFamilies = getCompletedEvolutionFamilies(boosterCards);
+
+        if (!completedFamilies.length) {
+            return null;
+        }
+
+        const label = completedFamilies.map(family => family.label).join(' + ');
+
+        return {
+            available: true,
+            applied: false,
+            skipped: false,
+            count: completedFamilies.length,
+            target: null,
+            bonus: 0,
+            applications: [],
+            decidedBy: opener.username,
+            source: 'evolution-family',
+            card: {
+                key: `evolution-family-${completedFamilies.map(family => family.keys.join('-')).join('-')}`,
+                name: `Famille complete: ${label}`,
+                pulledCardName: label,
+                evolutionFamilies: completedFamilies.map(family => ({
+                    label: family.label,
+                    cards: family.cards
+                }))
             }
         };
     }
@@ -1005,6 +1089,7 @@ function createPartyMode() {
             }
         } : null;
         const miniGameX2 = getMiniGameX2(options, opener);
+        const evolutionFamilyX2 = getEvolutionFamilyX2(boosterCards, opener);
 
         const boosterRecord = {
             opener: opener.username,
@@ -1012,7 +1097,7 @@ function createPartyMode() {
             distribution,
             events,
             everyoneDrinks,
-            x2: mergeX2Bonuses([cardX2, miniGameX2]),
+            x2: mergeX2Bonuses([cardX2, miniGameX2, evolutionFamilyX2]),
             miniGame: options.miniGameResult ? {
                 success: Boolean(options.miniGameResult.success),
                 attemptsUsed: options.miniGameResult.attemptsUsed || 0,
@@ -1423,6 +1508,7 @@ function createPartyMode() {
                 <div class="party-x2-result is-applied">
                     <strong>${totalUses} x2 appliqué${totalUses > 1 ? 's' : ''}</strong>
                     <span>${applications.map(application => `${application.target} +${application.bonus}`).join(' / ')} grâce à ${result.x2.card.name}.</span>
+                    ${renderEvolutionFamilyX2(result.x2)}
                 </div>
             `;
         }
@@ -1433,6 +1519,7 @@ function createPartyMode() {
                     <strong>${pendingLabel}</strong>
                     <span>${result.x2.decidedBy} choisit quel joueur double ses gorgées sur ce booster.</span>
                 </div>
+                ${renderEvolutionFamilyX2(result.x2)}
                 <div class="party-x2-targets">
                     ${Object.entries(result.distribution).map(([username, drinks]) => `
                         <button type="button" class="party-x2-target" data-x2-target="${username}">
@@ -1441,6 +1528,32 @@ function createPartyMode() {
                         </button>
                     `).join('')}
                 </div>
+            </div>
+        `;
+    }
+
+    function renderEvolutionFamilyX2(x2) {
+        const families = x2?.card?.evolutionFamilies || [];
+
+        if (!families.length) {
+            return '';
+        }
+
+        return `
+            <div class="party-evolution-bonus">
+                ${families.map(family => `
+                    <article>
+                        <strong>${family.label}</strong>
+                        <div class="party-evolution-cards">
+                            ${family.cards.map(card => `
+                                <figure>
+                                    <img src="${card.imageUrl || `assets/images/cards/151/${card.id}.jpg`}" alt="${card.name}">
+                                    <figcaption>${card.name}</figcaption>
+                                </figure>
+                            `).join('')}
+                        </div>
+                    </article>
+                `).join('')}
             </div>
         `;
     }
